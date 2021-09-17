@@ -97,14 +97,38 @@ void Softmax() {
 	std::cout << sigma2 << std::endl;
 }
 
+void Logarithms() {
+
+	int size = 5;
+
+	torch::Tensor x = torch::linspace(0.0001, 1, size);
+
+	torch::Tensor logx = torch::log(x);
+	torch::Tensor expx = torch::exp(x);
+
+	std::cout << "Log(x) :\n" << logx << std::endl;
+	std::cout << "Exp(x) :\n" << expx << std::endl;
+
+	torch::Tensor expLogx = torch::exp(logx);
+	torch::Tensor logExpx = torch::log(expx);
+
+	std::cout << "Exp(Log(x)) - Log(Exp(x))" << std::endl;
+
+	for (int i = 0; i < size; i++) {
+
+		std::cout<< std::setw(11) << expLogx[i].item<float>()<<" - "<< logExpx[i].item<float>() << std::endl;
+	}
+}
+
 int main(int argc, char** args) {
 
 /*
 	Vector_and_matrix_transpose();
 	The_dot_product();
 	Matrix_multiplication();
-*/
 	Softmax();
+*/
+	Logarithms();
 
 	return 0;
 }
