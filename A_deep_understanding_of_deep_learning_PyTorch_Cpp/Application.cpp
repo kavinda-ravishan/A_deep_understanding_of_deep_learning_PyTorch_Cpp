@@ -79,13 +79,26 @@ void Matrix_multiplication() {
 	std::cout << torch::matmul(B.t(), C) << std::endl;
 }
 
+void Softmax() {
+
+	torch::Tensor z = torch::tensor(
+		{ 1, 2, 3 },
+		{ torch::kFloat64 }
+	);
+	
+	torch::Tensor sigma = torch::softmax(z, 0);
+
+	std::cout << sigma << std::endl;
+}
+
 int main(int argc, char** args) {
 
+/*
 	Vector_and_matrix_transpose();
-
 	The_dot_product();
-
 	Matrix_multiplication();
+*/
+	Softmax();
 
 	return 0;
 }
