@@ -82,13 +82,19 @@ void Matrix_multiplication() {
 void Softmax() {
 
 	torch::Tensor z = torch::tensor(
-		{ 1, 2, 3 },
+		{ {1}, {2}, {3} },
 		{ torch::kFloat64 }
 	);
 	
-	torch::Tensor sigma = torch::softmax(z, 0);
+	torch::Tensor sigma1 = torch::softmax(z, 0);
+	std::cout << sigma1 << std::endl;
 
-	std::cout << sigma << std::endl;
+	torch::Tensor num = torch::exp(z);
+	torch::Tensor denVal = torch::sum(torch::exp(z));
+	torch::Tensor den = torch::full({ 3, 1 }, denVal.item<float>());
+	torch::Tensor sigma2 = num / den;
+
+	std::cout << sigma2 << std::endl;
 }
 
 int main(int argc, char** args) {
