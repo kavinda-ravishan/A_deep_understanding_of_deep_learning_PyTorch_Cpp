@@ -1,5 +1,4 @@
-#include <iostream>
-#include <torch/torch.h>
+#include "pch.h"
 
 void Vector_and_matrix_transpose() {
 
