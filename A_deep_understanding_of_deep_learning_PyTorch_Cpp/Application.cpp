@@ -121,6 +121,27 @@ namespace Math_numpy_PyTorch {
 			std::cout<< std::setw(11) << expLogx[i].item<float>()<<" - "<< logExpx[i].item<float>() << std::endl;
 		}
 	}
+
+	void Entropyand_cross_entropy() {
+
+		torch::Tensor p = torch::tensor({ 1, 0 }, torch::kFloat64);
+		torch::Tensor q = torch::tensor({ 0.25, 0.75 }, torch::kFloat64);
+		torch::Tensor H = torch::zeros({ 1 });
+		
+		for (int i = 0; i < p.sizes()[0]; i++) {
+
+			H -= p[i] * torch::log(q[i]);
+		}
+		std::cout << "Cross-entropy : " << H << std::endl;
+
+
+		H = -(p[0] * torch::log(q[0]) + p[1] * torch::log(q[1]));
+		std::cout << "Cross-entropy : " << H << std::endl;
+
+		H = torch::binary_cross_entropy(q, p);
+		std::cout << "Cross-entropy : " << H << std::endl;
+
+	}
 }
 
 using namespace Math_numpy_PyTorch;
@@ -134,7 +155,8 @@ int main(int argc, char** args) {
 	Softmax();
 	Logarithms();
 */
-	Logarithms();
+	
+	Entropyand_cross_entropy();
 
 	return 0;
 }
