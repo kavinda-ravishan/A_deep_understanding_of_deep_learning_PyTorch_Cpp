@@ -2,6 +2,39 @@
 
 namespace Math_numpy_PyTorch {
 
+	void Tensor() {
+
+		torch::Tensor s = torch::tensor(3, torch::kInt);
+		torch::Tensor v = torch::tensor(
+			{ 1, 2, 3 },
+			torch::kInt
+		);
+		torch::Tensor M = torch::tensor(
+			{
+				{1, 2, 3},
+				{4, 5, 6}
+			},
+			torch::kInt
+		);
+
+		for (int i = 0; i < 6; i++) {
+
+			std::cout << *(M.data_ptr<int>() + i) << std::endl;
+		}
+
+
+		std::cout << s << std::endl;
+		std::cout << s.item<int>() << std::endl;
+
+		std::cout << v << std::endl;
+		std::cout << v.size(0) << std::endl;
+
+		std::cout << M << std::endl;
+		std::cout << M.size(0) << std::endl;
+		std::cout << M.size(1) << std::endl;
+
+	}
+
 	void Vector_and_matrix_transpose() {
 
 		// Vector and matrix transpose
@@ -142,21 +175,83 @@ namespace Math_numpy_PyTorch {
 		std::cout << "Cross-entropy : " << H << std::endl;
 
 	}
+
+	void Min_maxand_argmin_argmax() {
+
+		torch::Tensor v = torch::tensor({ 1, 20, 2, -3 }, torch::kInt);
+
+		torch::Tensor minIndex = torch::argmin(v);
+		torch::Tensor maxIndex = torch::argmax(v);
+
+		std::cout << v << std::endl;
+
+		std::cout <<"Min index : " << minIndex.item<int>() << std::endl;
+		std::cout <<"Max index : " << maxIndex.item<int>() << std::endl;
+
+		std::cout << "Min : " << v[minIndex].item<int>() << std::endl;
+		std::cout << "Max : " << v[maxIndex].item<int>() << std::endl;
+		std::cout << std::endl;
+
+		torch::Tensor M = torch::tensor(
+			{
+				{0, 1, 10},
+				{20, 8, 5}
+			},
+			torch::kInt
+		);
+
+		std::cout << M << std::endl;
+
+		torch::Tensor min1 = torch::min(M);
+		std::tuple<torch::Tensor, torch::Tensor> min2 = torch::min(M, 0);
+		std::tuple<torch::Tensor, torch::Tensor> min3 = torch::min(M, 1);
+
+		std::cout << min1 << std::endl;
+		std::cout << std::get<0>(min2) << std::endl;
+		std::cout << std::get<1>(min2) << std::endl;
+		std::cout << std::get<0>(min3) << std::endl;
+		std::cout << std::get<1>(min3) << std::endl;
+
+		std::cout << torch::argmin(M) << std::endl;
+		std::cout << torch::argmin(M, 0) << std::endl;
+		std::cout << torch::argmin(M, 1) << std::endl;
+
+	}
+
+	void Mean_variance() {
+
+		torch::Tensor x = torch::tensor(
+			{ 1, 2, 4, 6, 5, 4, 0 },
+			torch::kFloat64
+		);
+
+		torch::Tensor mean = torch::sum(x) / x.size(0);
+		torch::Tensor variance = torch::sum(torch::square(x - mean)) / (x.size(0) - torch::tensor(1, torch::kFloat64));
+		torch::Tensor stdev = torch::sqrt(variance);
+
+		std::cout << "Mean : " << torch::mean(x).item<float>() << ", " << mean.item<float>() << std::endl;
+		std::cout << "Variance : " << torch::square(torch::std(x)).item<float>()<<", "<< variance.item<float>() << std::endl;
+		std::cout << "Standard deviation : " << torch::std(x).item<float>() << ", "<< stdev.item<float>() << std::endl;
+	}
 }
 
 using namespace Math_numpy_PyTorch;
+//namespace t = Math_numpy_PyTorch;
+
 
 int main(int argc, char** args) {
 
 /*
+	Tensor();
 	Vector_and_matrix_transpose();
 	The_dot_product();
 	Matrix_multiplication();
 	Softmax();
 	Logarithms();
-*/
-	
 	Entropyand_cross_entropy();
+	Min_maxand_argmin_argmax();
+*/
+	Mean_variance();
 
 	return 0;
 }
