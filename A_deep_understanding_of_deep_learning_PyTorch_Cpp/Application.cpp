@@ -233,6 +233,47 @@ namespace Math_numpy_PyTorch {
 		std::cout << "Variance : " << torch::square(torch::std(x)).item<float>()<<", "<< variance.item<float>() << std::endl;
 		std::cout << "Standard deviation : " << torch::std(x).item<float>() << ", "<< stdev.item<float>() << std::endl;
 	}
+
+	torch::Tensor Random_choice(torch::Tensor a, int size) {
+
+		int n = a.size(0);
+		int c;
+		torch::Tensor sample = torch::zeros(size, a.dtype());
+
+		for (int i = 0; i < size; i++) {
+
+			c = torch::randint(n, 1).item<int>();
+			sample[i] = a[c];
+		}
+
+		return sample;
+	}
+
+	void Random_samplingand_sampling_variability() {
+		
+		std::vector<int> val = { 1, 2, 3, 4, -1, -5, 0, 1, 4, 9, 6, -9, 6, -4, 2, 1 };
+		int sampleSize = 5;
+		int nExers = 1000;
+
+		torch::Tensor x = torch::tensor(
+			val,
+			torch::kFloat64
+		);
+
+		torch::Tensor popMean = torch::mean(x);
+		torch::Tensor sampleMeans = torch::zeros(nExers);
+		torch::Tensor sample = torch::zeros(sampleSize);
+		
+		for (int i = 0; i < nExers; i++) {
+
+			sample = Random_choice(x, sampleSize);
+			sampleMeans[i] = torch::mean(sample);
+		}
+		
+		std::cout << popMean << std::endl;
+		std::cout << torch::mean(sampleMeans) << std::endl;
+
+	}
 }
 
 using namespace Math_numpy_PyTorch;
@@ -250,8 +291,9 @@ int main(int argc, char** args) {
 	Logarithms();
 	Entropyand_cross_entropy();
 	Min_maxand_argmin_argmax();
-*/
 	Mean_variance();
+*/
+	Random_samplingand_sampling_variability();
 
 	return 0;
 }
