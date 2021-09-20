@@ -274,6 +274,19 @@ namespace Math_numpy_PyTorch {
 		std::cout << torch::mean(sampleMeans) << std::endl;
 
 	}
+
+	void Reproducible_randomness_seeding() {
+
+		std::cout << torch::randn(5) << std::endl;
+
+		torch::manual_seed(17);
+		
+		// float a[] = {-1.4135, 0.2336, 0.0340, 0.3499, -0.0145};
+		// float b[] = {-0.6124, -1.1835, -1.4831, 1.8004, 0.0096};
+
+		std::cout << torch::randn(5).reshape({1, -1}) << std::endl;
+		std::cout << torch::randn(5).reshape({ 1, -1 }) << std::endl;
+	}
 }
 
 using namespace Math_numpy_PyTorch;
@@ -292,8 +305,9 @@ int main(int argc, char** args) {
 	Entropyand_cross_entropy();
 	Min_maxand_argmin_argmax();
 	Mean_variance();
-*/
 	Random_samplingand_sampling_variability();
+*/
+	Reproducible_randomness_seeding();
 
 	return 0;
 }
