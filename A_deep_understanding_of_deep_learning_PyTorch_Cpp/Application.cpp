@@ -148,13 +148,9 @@ void plot_losses(torch::Tensor losses_t, int numepochs) {
 	DeleteImage(imageReference->image);
 }
 
-int main(int argc, char** args) {
-	
-	/*
-	Math_numpy_PyTorch::AllCalls();
-	Gradient_Descent::AllCalls();
-	ANNs::AllCalls();
-	*/
+void ANN_classification() {
+
+#pragma region Create data
 
 	int nPerClust = 100;
 	int blur = 1;
@@ -172,15 +168,17 @@ int main(int argc, char** args) {
 	std::vector<double> ay(ay_t.data_ptr<float>(), ay_t.data_ptr<float>() + ay_t.numel());
 	std::vector<double> bx(bx_t.data_ptr<float>(), bx_t.data_ptr<float>() + bx_t.numel());
 	std::vector<double> by(by_t.data_ptr<float>(), by_t.data_ptr<float>() + by_t.numel());
-	
+
 	plot_data(ax, ay, bx, by, "plots/ANN_classifier.png");
 
 	torch::Tensor labels = torch::vstack({ torch::zeros({nPerClust, 1}), torch::ones({nPerClust, 1}) });
-	
+
 	torch::Tensor dataA = torch::transpose(torch::stack({ ax_t, ay_t }), 1, 0);
 	torch::Tensor dataB = torch::transpose(torch::stack({ bx_t, by_t }), 1, 0);
 
 	torch::Tensor data = torch::vstack({ dataA, dataB });
+
+#pragma endregion
 
 #pragma region creating and train the model
 
@@ -239,7 +237,7 @@ int main(int argc, char** args) {
 			errors++;
 		}
 	}
-	std::cout << "Accuracy : "<< 100*(((nPerClust * 2)-errors)/float(nPerClust*2))<< "%" << std::endl;
+	std::cout << "Accuracy : " << 100 * (((nPerClust * 2) - errors) / float(nPerClust * 2)) << "%" << std::endl;
 
 	vector<double> catAx;
 	vector<double> catAy;
@@ -247,7 +245,7 @@ int main(int argc, char** args) {
 	vector<double> catBy;
 
 	for (int i = 0; i < nPerClust * 2; i++) {
-		
+
 		if (predictions[i].item<float>() < 0.5) {
 			catAx.push_back(data[i][0].item<double>());
 			catAy.push_back(data[i][1].item<double>());
@@ -261,6 +259,17 @@ int main(int argc, char** args) {
 	plot_data_err(catAx, catAy, catBx, catBy, errx, erry, "plots/ANN_classifier_pred.png");
 
 #pragma endregion
+}
+
+int main(int argc, char** args) {
+	
+	/*
+	Math_numpy_PyTorch::AllCalls();
+	Gradient_Descent::AllCalls();
+	ANNs::AllCalls();
+	*/
+
+	ANN_classification();
 
 	return 0;
 }
