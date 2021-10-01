@@ -27,6 +27,9 @@
     <ClCompile Include="supportLib.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="torch_functions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -36,6 +39,9 @@
       <Filter>Resource Files</Filter>
     </ClInclude>
     <ClInclude Include="supportLib.hpp">
+      <Filter>Resource Files</Filter>
+    </ClInclude>
+    <ClInclude Include="torch_functions.h">
       <Filter>Resource Files</Filter>
     </ClInclude>
   </ItemGroup>
