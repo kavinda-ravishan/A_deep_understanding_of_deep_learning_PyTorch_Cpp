@@ -3,16 +3,52 @@
 
 namespace ANNs {
 
+	void plot_data(
+		std::vector<double>& ax,
+		std::vector<double>& ay,
+		std::vector<double>& bx,
+		std::vector<double>& by,
+		std::string path
+	);
+
+	void plot_data_err(
+		std::vector<double>& ax,
+		std::vector<double>& ay,
+		std::vector<double>& bx,
+		std::vector<double>& by,
+		std::vector<double>& errx,
+		std::vector<double>& erry,
+		std::string path
+	);
+
+	void plot_losses(torch::Tensor losses_t, int numepochs, std::string path);
+
 	void ANN_regression();
+
+	void ANN_classification();
+
+	void Multilayer_ANN_classification();
 
 	void AllCalls();
 }
 
-void plot_data(
-	std::vector<double> &ax,
-	std::vector<double> &ay,
-	std::vector<double> &bx,
-	std::vector<double> &by,
+int main(int argc, char** args) {
+	
+	/*
+	Math_numpy_PyTorch::AllCalls();
+	Gradient_Descent::AllCalls();
+	*/
+	ANNs::AllCalls();
+
+
+	return 0;
+}
+
+void ANNs::plot_data(
+	std::vector<double>& ax,
+	std::vector<double>& ay,
+	std::vector<double>& bx,
+	std::vector<double>& by,
 	std::string path
 ) {
 
@@ -31,7 +67,7 @@ void plot_data(
 	settings->title = toVector(L"Data");
 	settings->xLabel = toVector(L"dimension 1");
 	settings->yLabel = toVector(L"dimension 2");
-	
+
 	if (ax.size() != 0 && ay.size() != 0) {
 		ScatterPlotSeries* series1 = GetDefaultScatterPlotSeriesSettings();
 		settings->scatterPlotSeries->push_back(series1);
@@ -41,7 +77,7 @@ void plot_data(
 		series1->pointType = toVector(L"dots");
 		series1->color = &s1Color;
 	}
-	
+
 	if (bx.size() != 0 && by.size() != 0) {
 		ScatterPlotSeries* series2 = GetDefaultScatterPlotSeriesSettings();
 		settings->scatterPlotSeries->push_back(series2);
@@ -51,7 +87,7 @@ void plot_data(
 		series2->pointType = toVector(L"dots");
 		series2->color = &s2Color;
 	}
-	
+
 	DrawScatterPlotFromSettings(imageReference, settings);
 
 	vector<double>* pngdata = ConvertToPNG(imageReference->image);
@@ -59,7 +95,7 @@ void plot_data(
 	DeleteImage(imageReference->image);
 }
 
-void plot_data_err(
+void ANNs::plot_data_err(
 	std::vector<double>& ax,
 	std::vector<double>& ay,
 	std::vector<double>& bx,
@@ -96,7 +132,7 @@ void plot_data_err(
 		series1->pointType = toVector(L"dots");
 		series1->color = &s1Color;
 	}
-	
+
 	if (bx.size() != 0 && by.size() != 0) {
 		ScatterPlotSeries* series2 = GetDefaultScatterPlotSeriesSettings();
 		settings->scatterPlotSeries->push_back(series2);
@@ -106,7 +142,7 @@ void plot_data_err(
 		series2->pointType = toVector(L"dots");
 		series2->color = &s2Color;
 	}
-	
+
 	if (errx.size() != 0 && erry.size() != 0) {
 		ScatterPlotSeries* series3 = GetDefaultScatterPlotSeriesSettings();
 		settings->scatterPlotSeries->push_back(series3);
@@ -116,7 +152,7 @@ void plot_data_err(
 		series3->pointType = toVector(L"crosses");
 		series3->color = &s3Color;
 	}
-	
+
 	DrawScatterPlotFromSettings(imageReference, settings);
 
 	vector<double>* pngdata = ConvertToPNG(imageReference->image);
@@ -124,9 +160,9 @@ void plot_data_err(
 	DeleteImage(imageReference->image);
 }
 
-void plot_losses(torch::Tensor losses_t, int numepochs, std::string path) {
+void ANNs::plot_losses(torch::Tensor losses_t, int numepochs, std::string path) {
 
-	std::vector<double>losses (losses_t.data_ptr<float>(), losses_t.data_ptr<float>() + losses_t.numel());
+	std::vector<double>losses(losses_t.data_ptr<float>(), losses_t.data_ptr<float>() + losses_t.numel());
 	std::vector<double> epochs(numepochs);
 	std::iota(std::begin(epochs), std::end(epochs), 0);
 
@@ -159,7 +195,105 @@ void plot_losses(torch::Tensor losses_t, int numepochs, std::string path) {
 	DeleteImage(imageReference->image);
 }
 
-void ANN_classification() {
+void ANNs::ANN_regression() {
+
+#pragma region Create data
+
+	int N = 40;
+
+	torch::Tensor x = torch::randn({ N,1 }, torch::kFloat32);
+	torch::Tensor y = x + torch::randn({ N,1 }, torch::kFloat32) / 2;
+
+#pragma endregion
+
+#pragma region creating and train the model
+
+	torch::nn::Sequential ANNReg(
+		torch::nn::Linear(1, 1),
+		torch::nn::ReLU(),
+		torch::nn::Linear(1, 1)
+	);
+
+	float learningRate = 0.05;
+	torch::optim::SGD optimizer(ANNReg->parameters(), learningRate);
+
+	int numepochs = 500;
+	torch::Tensor losses = torch::zeros(numepochs, torch::kFloat32);
+
+	for (int i = 0; i < numepochs; i++) {
+		torch::Tensor yhat = ANNReg->forward(x);
+
+		torch::Tensor loss = torch::mse_loss(yhat, y);
+		losses[i] = loss;
+
+		optimizer.zero_grad();
+		loss.backward();
+		optimizer.step();
+	}
+#pragma endregion
+
+#pragma region make predictions
+
+	torch::Tensor predictions = ANNReg->forward(x);
+
+	vector<double>  xVec(N);
+	vector<double>  yVec(N);
+	vector<double>  predVec(N);
+
+	for (int i = 0; i < N; i++) {
+
+		xVec[i] = x[i].item<double>();
+		yVec[i] = y[i].item<double>();
+		predVec[i] = predictions[i].item<double>();
+	}
+
+	for (int i = 0; i < N; i++) {
+
+		std::cout << xVec[i] << ", " << yVec[i] << ", " << predVec[i] << std::endl;
+	}
+#pragma endregion
+
+#pragma region plot data
+
+	RGBA s1Color{ 0,0,1,1 }; // R,G,B,A
+	RGBA s2Color{ 1,0,0,1 }; // R,G,B,A
+
+	RGBABitmapImageReference* imageReference = CreateRGBABitmapImageReference();
+
+	ScatterPlotSeries* series1 = GetDefaultScatterPlotSeriesSettings();
+	series1->xs = &xVec;
+	series1->ys = &yVec;
+	series1->linearInterpolation = false;
+	series1->pointType = toVector(L"dots");
+	series1->color = &s1Color;
+
+	ScatterPlotSeries* series2 = GetDefaultScatterPlotSeriesSettings();
+	series2->xs = &xVec;
+	series2->ys = &predVec;
+	series2->linearInterpolation = false;
+	series2->pointType = toVector(L"dots");
+	series2->color = &s2Color;
+
+	ScatterPlotSettings* settings = GetDefaultScatterPlotSettings();
+	settings->width = 600;
+	settings->height = 400;
+	settings->autoBoundaries = true;
+	settings->autoPadding = true;
+	settings->title = toVector(L"Linear regression");
+	settings->xLabel = toVector(L"X axis");
+	settings->yLabel = toVector(L"Y axis");
+	settings->scatterPlotSeries->push_back(series1);
+	settings->scatterPlotSeries->push_back(series2);
+
+	DrawScatterPlotFromSettings(imageReference, settings);
+
+	vector<double>* pngdata = ConvertToPNG(imageReference->image);
+	WriteToFile(pngdata, "plots/ANN_Linear_regression.png");
+	DeleteImage(imageReference->image);
+#pragma endregion
+}
+
+void ANNs::ANN_classification() {
 
 #pragma region Create data
 
@@ -274,14 +408,14 @@ void ANN_classification() {
 #pragma endregion
 }
 
-void Multilayer_ANN_classification() {
+void ANNs::Multilayer_ANN_classification() {
 
 #pragma region Create data
 
 	int nPerClust = 100;
 	int blur = 1;
 
-	int A[] = { 1, 3  }; // centroid category 1
+	int A[] = { 1, 3 }; // centroid category 1
 	int	B[] = { 1, -2 }; // centroid category 2
 
 
@@ -392,120 +526,9 @@ void Multilayer_ANN_classification() {
 #pragma endregion
 }
 
-int main(int argc, char** args) {
-	
-	/*
-	Math_numpy_PyTorch::AllCalls();
-	Gradient_Descent::AllCalls();
-	ANNs::AllCalls();
-	
-	ANN_classification();
-	*/
-
-	Multilayer_ANN_classification();
-
-	return 0;
-}
-
-void ANNs::ANN_regression() {
-
-#pragma region Create data
-
-	int N = 40;
-
-	torch::Tensor x = torch::randn({ N,1 }, torch::kFloat32);
-	torch::Tensor y = x + torch::randn({ N,1 }, torch::kFloat32) / 2;
-
-#pragma endregion
-
-#pragma region creating and train the model
-
-	torch::nn::Sequential ANNReg(
-		torch::nn::Linear(1, 1),
-		torch::nn::ReLU(),
-		torch::nn::Linear(1, 1)
-	);
-
-	float learningRate = 0.05;
-	torch::optim::SGD optimizer(ANNReg->parameters(), learningRate);
-
-	int numepochs = 500;
-	torch::Tensor losses = torch::zeros(numepochs, torch::kFloat32);
-
-	for (int i = 0; i < numepochs; i++) {
-		torch::Tensor yhat = ANNReg->forward(x);
-
-		torch::Tensor loss = torch::mse_loss(yhat, y);
-		losses[i] = loss;
-
-		optimizer.zero_grad();
-		loss.backward();
-		optimizer.step();
-	}
-#pragma endregion
-
-#pragma region make predictions
-
-	torch::Tensor predictions = ANNReg->forward(x);
-
-	vector<double>  xVec(N);
-	vector<double>  yVec(N);
-	vector<double>  predVec(N);
-
-	for (int i = 0; i < N; i++) {
-
-		xVec[i] = x[i].item<double>();
-		yVec[i] = y[i].item<double>();
-		predVec[i] = predictions[i].item<double>();
-	}
-
-	for (int i = 0; i < N; i++) {
-
-		std::cout << xVec[i] << ", " << yVec[i] << ", " << predVec[i] << std::endl;
-	}
-#pragma endregion
-
-#pragma region plot data
-
-	RGBA s1Color{ 0,0,1,1 }; // R,G,B,A
-	RGBA s2Color{ 1,0,0,1 }; // R,G,B,A
-
-	RGBABitmapImageReference* imageReference = CreateRGBABitmapImageReference();
-
-	ScatterPlotSeries* series1 = GetDefaultScatterPlotSeriesSettings();
-	series1->xs = &xVec;
-	series1->ys = &yVec;
-	series1->linearInterpolation = false;
-	series1->pointType = toVector(L"dots");
-	series1->color = &s1Color;
-
-	ScatterPlotSeries* series2 = GetDefaultScatterPlotSeriesSettings();
-	series2->xs = &xVec;
-	series2->ys = &predVec;
-	series2->linearInterpolation = false;
-	series2->pointType = toVector(L"dots");
-	series2->color = &s2Color;
-
-	ScatterPlotSettings* settings = GetDefaultScatterPlotSettings();
-	settings->width = 600;
-	settings->height = 400;
-	settings->autoBoundaries = true;
-	settings->autoPadding = true;
-	settings->title = toVector(L"Linear regression");
-	settings->xLabel = toVector(L"X axis");
-	settings->yLabel = toVector(L"Y axis");
-	settings->scatterPlotSeries->push_back(series1);
-	settings->scatterPlotSeries->push_back(series2);
-
-	DrawScatterPlotFromSettings(imageReference, settings);
-
-	vector<double>* pngdata = ConvertToPNG(imageReference->image);
-	WriteToFile(pngdata, "plots/ANN_Linear_regression.png");
-	DeleteImage(imageReference->image);
-#pragma endregion
-}
-
 void ANNs::AllCalls() {
 
 	ANN_regression();
+	ANN_classification();
+	Multilayer_ANN_classification();
 }
