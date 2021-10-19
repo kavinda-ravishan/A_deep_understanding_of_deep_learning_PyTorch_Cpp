@@ -32,15 +32,96 @@ namespace ANNs {
 	void AllCalls();
 }
 
+std::vector<std::string> split(const std::string& s, char delimiter)
+{
+	std::vector<std::string> tokens;
+	std::string token;
+	std::istringstream tokenStream(s);
+	while (std::getline(tokenStream, token, delimiter))
+	{
+		tokens.push_back(token);
+	}
+	return tokens;
+}
+
 int main(int argc, char** args) {
 	
 	/*
 	Math_numpy_PyTorch::AllCalls();
 	Gradient_Descent::AllCalls();
-	*/
 	ANNs::AllCalls();
+	*/
 
+	std::string text;
+	std::string headstr;
+	std::vector<string> filestr;
+	std::ifstream file;
+	try {
 
+		file.open("datasets/iris.csv");
+		if (!file.is_open()) throw -1;
+
+		getline(file, headstr);
+		while (getline(file, text)) {
+
+			filestr.push_back(text);
+		}
+		file.close();
+	}
+	catch (...) {
+
+		std::cout << "Can not open the file." << std::endl;
+		file.close();
+	}
+
+	std::vector<string> colNames = split(headstr, ',');
+
+	std::vector<std::vector<std::string>> data;
+
+	int numRows = colNames.size();
+
+	for (int i = 0; i < numRows; i++) {
+
+		data.push_back(std::vector<std::string>());
+	}
+	
+	for (std::string line : filestr) {
+
+		std::vector<string> row = split(line, ',');
+		
+		for (int i = 0; i < numRows; i++) {
+
+			data[i].push_back(row[i]);
+		}
+	}
+	
+	for (std::vector<std::string> row : data) {
+
+		for (std::string i : row) {
+
+			try {
+
+				std::cout << std::stod(i) << std::endl;
+			}
+			catch(...){
+
+				std::cout << i << std::endl;
+			}
+		}
+		std::cout << std::endl;
+	}
+
+	/*
+	vector<vector<int>> a = {
+		{1, 2, 3},
+		{2, 3, 4}
+	};
+
+	for (vector<int> i : a) {
+
+		std::cout << i << std::endl;
+	}
+	*/
 	return 0;
 }
 
