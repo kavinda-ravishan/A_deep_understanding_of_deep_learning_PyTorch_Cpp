@@ -44,22 +44,16 @@ std::vector<std::string> split(const std::string& s, char delimiter)
 	return tokens;
 }
 
-int main(int argc, char** args) {
-	
-	/*
-	Math_numpy_PyTorch::AllCalls();
-	Gradient_Descent::AllCalls();
-	ANNs::AllCalls();
-	*/
+void read_csv(std::string path, std::vector<std::vector<std::string>> &data, std::vector<std::string> &colNames) {
 
 	std::string text;
 	std::string headstr;
-	std::vector<string> filestr;
+	std::vector<std::string> filestr;
 	std::ifstream file;
 	try {
 
-		file.open("datasets/iris.csv");
-		if (!file.is_open()) throw -1;
+		file.open(path);
+		if (!file.is_open()) throw - 1;
 
 		getline(file, headstr);
 		while (getline(file, text)) {
@@ -74,54 +68,151 @@ int main(int argc, char** args) {
 		file.close();
 	}
 
-	std::vector<string> colNames = split(headstr, ',');
+	colNames = split(headstr, ',');
 
-	std::vector<std::vector<std::string>> data;
+	int numCols = colNames.size();
 
-	int numRows = colNames.size();
-
-	for (int i = 0; i < numRows; i++) {
+	for (int i = 0; i < numCols; i++) {
 
 		data.push_back(std::vector<std::string>());
 	}
-	
+
 	for (std::string line : filestr) {
 
-		std::vector<string> row = split(line, ',');
-		
-		for (int i = 0; i < numRows; i++) {
+		std::vector<std::string> row = split(line, ',');
+
+		for (int i = 0; i < numCols; i++) {
 
 			data[i].push_back(row[i]);
 		}
 	}
-	
-	for (std::vector<std::string> row : data) {
+}
 
-		for (std::string i : row) {
-
-			try {
-
-				std::cout << std::stod(i) << std::endl;
-			}
-			catch(...){
-
-				std::cout << i << std::endl;
-			}
-		}
-		std::cout << std::endl;
-	}
+int main(int argc, char** args) {
 
 	/*
-	vector<vector<int>> a = {
-		{1, 2, 3},
-		{2, 3, 4}
-	};
-
-	for (vector<int> i : a) {
-
-		std::cout << i << std::endl;
-	}
+	Math_numpy_PyTorch::AllCalls();
+	Gradient_Descent::AllCalls();
+	ANNs::AllCalls();
 	*/
+
+#pragma region read_and_prepare_data
+
+	std::string path = "datasets/iris.csv";
+	std::vector<std::vector<std::string>> data;
+	std::vector<std::string> colNames;
+
+	read_csv(path, data, colNames);
+
+	int numCols = data.size();
+
+	std::vector<std::vector<float>> vX;
+	for (int i = 0; i < numCols - 1; i++) {
+
+		vX.push_back(std::vector<float>());
+	}
+
+	for (int i = 0; i < numCols - 1; i++) {
+
+		for (std::string value : data[i]) {
+
+			vX[i].push_back(std::stod(value));
+		}
+	}
+
+	int column = numCols - 1;
+	std::vector<int> vy;
+	std::vector<std::string> categories;
+	bool is_category_exists = false;
+
+	for (std::string label : data[column]) {
+
+		is_category_exists = false;
+		int i = 0;
+		for (std::string category : categories) {
+
+			if (category == label) {
+
+				is_category_exists = true;
+				break;
+			}
+			i++;
+		}
+
+		if (!is_category_exists) categories.push_back(label);
+
+		vy.push_back(i);
+	}
+
+	torch::Tensor X0 = torch::tensor(vX[0], torch::kFloat);
+	torch::Tensor X1 = torch::tensor(vX[1], torch::kFloat);
+	torch::Tensor X2 = torch::tensor(vX[2], torch::kFloat);
+	torch::Tensor X3 = torch::tensor(vX[3], torch::kFloat);
+	
+	torch::Tensor X = torch::stack({ X0, X1, X2, X3 }, 1);
+
+	torch::Tensor y = torch::tensor(vy, torch::kInt64);
+#pragma endregion
+
+#pragma region create_model
+
+	torch::nn::Sequential ANNclassify(
+		torch::nn::Linear(4, 64),
+		torch::nn::ReLU(),
+		torch::nn::Linear(64, 64),
+		torch::nn::ReLU(),
+		torch::nn::Linear(64, 3)
+	);
+
+	float learningRate = 0.01;
+	torch::optim::SGD optimizer(ANNclassify->parameters(), learningRate);
+
+	int numepochs = 1000;
+	torch::Tensor losses = torch::zeros(numepochs, torch::kFloat32);
+	torch::Tensor ongoingAcc = torch::zeros(numepochs, torch::kFloat32);
+
+	for (int i = 0; i < numepochs; i++) {
+
+		torch::Tensor yhat = ANNclassify->forward(X);
+
+		torch::Tensor loss = torch::nn::functional::cross_entropy(yhat, y);
+		losses[i] = loss;
+
+		optimizer.zero_grad();
+		loss.backward();
+		optimizer.step();
+
+		torch::Tensor pred = torch::argmax(yhat, 1);
+		int numPreds = pred.size(0);
+		int num_correct_preds = 0;
+		for (int i = 0; i < numPreds; i++) {
+
+			if (pred[i].item<int>() == vy[i]) num_correct_preds++;
+		}
+
+		ongoingAcc[i] = (num_correct_preds * 100) / float(numPreds);
+	}
+	
+
+#pragma endregion
+
+#pragma region predictions
+
+	torch::Tensor pred = torch::argmax(ANNclassify->forward(X), 1);
+
+	int numPreds = pred.size(0);
+	int num_correct_preds = 0;
+	for (int i = 0; i < numPreds; i++) {
+
+		if (pred[i].item<int>() == vy[i]) num_correct_preds++;
+	}
+
+	std::cout << (num_correct_preds * 100)/float(numPreds)<<" %" << std::endl;
+
+	ANNs::plot_losses(losses, numepochs, "plots/Iris_dataset_losses.png");
+	ANNs::plot_losses(ongoingAcc, numepochs, "plots/Iris_dataset_accuracy.png");
+#pragma endregion
+
 	return 0;
 }
 
@@ -133,7 +224,7 @@ void ANNs::plot_data(
 	std::string path
 ) {
 
-	//for (auto a : ax) std::cout << a << std::endl;
+	for (auto a : ax) std::cout << a << std::endl;
 
 	RGBA s1Color{ 0,0,1,1 }; // R,G,B,A
 	RGBA s2Color{ 0,1,0,1 }; // R,G,B,A
@@ -186,7 +277,7 @@ void ANNs::plot_data_err(
 	std::string path
 ) {
 
-	//for (auto a : ax) std::cout << a << std::endl;
+	for (auto a : ax) std::cout << a << std::endl;
 
 	RGBA s1Color{ 0,0,1,1 }; // R,G,B,A
 	RGBA s2Color{ 0,1,0,1 }; // R,G,B,A
