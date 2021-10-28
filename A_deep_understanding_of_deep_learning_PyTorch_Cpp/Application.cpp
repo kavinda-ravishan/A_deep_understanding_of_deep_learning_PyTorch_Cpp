@@ -26,8 +26,8 @@ namespace ANNs {
 	std::vector<std::string> split(const std::string& s, char delimiter);
 
 	void read_csv(
-		std::string path, 
-		std::vector<std::vector<std::string>>& data, 
+		std::string path,
+		std::vector<std::vector<std::string>>& data,
 		std::vector<std::string>& colNames
 	);
 
@@ -55,8 +55,6 @@ namespace ANNs {
 }
 
 
-
-
 int main(int argc, char** args) {
 
 	/*
@@ -64,6 +62,7 @@ int main(int argc, char** args) {
 	Gradient_Descent::AllCalls();
 	ANNs::AllCalls();
 	*/
+
 
 
 	return 0;
@@ -725,7 +724,7 @@ void ANNs::ANN_iris_dataset() {
 		if (pred[i].item<int>() == vy[i]) num_correct_preds++;
 	}
 
-	std::cout << (num_correct_preds * 100) / float(numPreds) << " %" << std::endl;
+	std::cout << "Accuracy : " << (num_correct_preds * 100) / float(numPreds) << "%" << std::endl;
 
 	plot_losses(losses, numepochs, "plots/Iris_dataset_losses.png");
 	plot_losses(ongoingAcc, numepochs, "plots/Iris_dataset_accuracy.png");
