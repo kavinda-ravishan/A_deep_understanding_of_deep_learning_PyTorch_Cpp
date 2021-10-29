@@ -69,8 +69,7 @@ public:
 			{"output", torch::nn::Linear(2, 1).ptr()},
 		};
 		torch::nn::ModuleDict dict(ordereddict);
-
-		ann_dict = register_module("ann_dict", torch::nn::ModuleDict(dict));
+		ann_dict = register_module("ann_dict", dict);
 	}
 
 	torch::Tensor forward(torch::Tensor x) {
