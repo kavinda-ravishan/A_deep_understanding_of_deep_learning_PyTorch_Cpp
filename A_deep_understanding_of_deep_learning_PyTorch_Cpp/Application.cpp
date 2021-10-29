@@ -55,9 +55,10 @@ namespace ANNs {
 
 	private:
 		torch::nn::ModuleDict ann_dict{ nullptr };
+		std::vector<std::string> layersNames;
 
 	public:
-		ANN_ModuleDict();
+		ANN_ModuleDict(int nUnits, int nLayers);
 
 		torch::Tensor forward(torch::Tensor x);
 	};
@@ -76,7 +77,7 @@ int main(int argc, char** args) {
 	Gradient_Descent::AllCalls();
 	ANNs::AllCalls();
 	*/
-	
+	ANNs::ANN_class_ModuleDict_classification();
 
 	return 0;
 }
@@ -878,12 +879,26 @@ void ANNs::ANN_class_classification() {
 #pragma endregion
 }
 
-ANNs::ANN_ModuleDict::ANN_ModuleDict() {
+ANNs::ANN_ModuleDict::ANN_ModuleDict(int nUnits, int nLayers) {
 
-	torch::OrderedDict<std::string, std::shared_ptr<Module>> ordereddict = {
-		{"input", torch::nn::Linear(2, 1).ptr()},
-		{"output", torch::nn::Linear(1, 1).ptr()},
-	};
+	for (int i = 1; i <= nLayers; i++) {
+
+		std::string layerName = "hidden";
+		layerName.append(std::to_string(i));
+		layersNames.push_back(layerName);
+	}
+
+	torch::OrderedDict<std::string, std::shared_ptr<Module>> ordereddict;
+
+	ordereddict.insert("input", torch::nn::Linear(2, nUnits).ptr());
+
+	for (std::string lstr : layersNames) {
+
+		ordereddict.insert(lstr, torch::nn::Linear(nUnits, nUnits).ptr());
+	}
+	
+	ordereddict.insert("output", torch::nn::Linear(nUnits, 1).ptr());
+
 	torch::nn::ModuleDict dict(ordereddict);
 	ann_dict = register_module("ann_dict", dict);
 }
@@ -892,6 +907,12 @@ torch::Tensor ANNs::ANN_ModuleDict::forward(torch::Tensor x) {
 
 	x = ann_dict["input"]->as<torch::nn::Linear>()->forward(x);
 	x = torch::relu(x);
+
+	for (std::string lstr : layersNames) {
+
+		x = torch::relu(ann_dict[lstr]->as<torch::nn::Linear>()->forward(x));
+	}
+
 	x = ann_dict["output"]->as<torch::nn::Linear>()->forward(x);
 	x = torch::sigmoid(x);
 
@@ -932,14 +953,7 @@ void ANNs::ANN_class_ModuleDict_classification() {
 
 #pragma region creating and train the model
 
-	/*torch::nn::Sequential ANNclassify(
-		torch::nn::Linear(2, 1),
-		torch::nn::ReLU(),
-		torch::nn::Linear(1, 1),
-		torch::nn::Sigmoid()
-	);*/
-
-	ANNs::ANN_ModuleDict ANNclassify;
+	ANNs::ANN_ModuleDict ANNclassify(1, 1);
 
 	float learningRate = 0.01;
 	torch::optim::SGD optimizer(ANNclassify.parameters(), learningRate);
