@@ -43,3 +43,70 @@ namespace Gradient_Descent {
 
 	void AllCalls();
 }
+
+namespace ANNs {
+
+	void plot_data(
+		std::vector<double>& ax,
+		std::vector<double>& ay,
+		std::vector<double>& bx,
+		std::vector<double>& by,
+		std::string path
+	);
+
+	void plot_data_err(
+		std::vector<double>& ax,
+		std::vector<double>& ay,
+		std::vector<double>& bx,
+		std::vector<double>& by,
+		std::vector<double>& errx,
+		std::vector<double>& erry,
+		std::string path
+	);
+
+	void plot_losses(torch::Tensor losses_t, int numepochs, std::string path);
+
+	std::vector<std::string> split(const std::string& s, char delimiter);
+
+	void read_csv(
+		std::string path,
+		std::vector<std::vector<std::string>>& data,
+		std::vector<std::string>& colNames
+	);
+
+	void ANN_regression();
+
+	void ANN_classification();
+
+	void Multilayer_ANN_classification();
+
+	void ANN_iris_dataset();
+
+	class ANNclassifyClass :public torch::nn::Module {
+
+	private:
+		torch::nn::Linear input{ nullptr }, output{ nullptr };
+
+	public:
+		ANNclassifyClass();
+		torch::Tensor forward(torch::Tensor x);
+	};
+
+	void ANN_class_classification();
+
+	class ANN_ModuleDict : public torch::nn::Module {
+
+	private:
+		torch::nn::ModuleDict ann_dict{ nullptr };
+		std::vector<std::string> layersNames;
+
+	public:
+		ANN_ModuleDict(int nUnits, int nLayers);
+
+		torch::Tensor forward(torch::Tensor x);
+	};
+
+	void ANN_class_ModuleDict_classification();
+
+	void AllCalls();
+}
