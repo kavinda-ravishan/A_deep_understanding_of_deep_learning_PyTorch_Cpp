@@ -54,6 +54,33 @@ namespace ANNs {
 	void AllCalls();
 }
 
+class ANN_ModuleDict : public torch::nn::Module {
+
+private:
+
+	torch::nn::ModuleDict ann_dict{ nullptr };
+
+public:
+
+	ANN_ModuleDict() {
+		
+		torch::OrderedDict<std::string, std::shared_ptr<Module>> ordereddict = {
+			{"input", torch::nn::Linear(1, 2).ptr()},
+			{"output", torch::nn::Linear(2, 1).ptr()},
+		};
+		torch::nn::ModuleDict dict(ordereddict);
+
+		ann_dict = register_module("ann_dict", torch::nn::ModuleDict(dict));
+	}
+
+	torch::Tensor forward(torch::Tensor x) {
+
+		x = ann_dict["input"]->as<torch::nn::Linear>()->forward(x);
+		x = ann_dict["output"]->as<torch::nn::Linear>()->forward(x);
+
+		return x;
+	}
+};
 
 int main(int argc, char** args) {
 
@@ -63,7 +90,30 @@ int main(int argc, char** args) {
 	ANNs::AllCalls();
 	*/
 
+	torch::Tensor y = torch::reshape(torch::arange(1, 20, 2, torch::kFloat), { -1, 1 });
+	torch::Tensor x = torch::reshape(torch::arange(y.size(0), torch::kFloat), { -1, 1 });
 
+	ANN_ModuleDict net;
+
+	float learningRate = 0.01;
+	torch::optim::SGD optimizer(net.parameters(), learningRate);
+
+	int numepochs = 1000;
+	torch::Tensor losses = torch::zeros(numepochs, torch::kFloat);
+
+	for (int i = 0; i < numepochs; i++) {
+		torch::Tensor yhat = net.forward(x);
+
+		torch::Tensor loss = torch::mse_loss(yhat, y);
+		losses[i] = loss;
+
+		optimizer.zero_grad();
+		loss.backward();
+		optimizer.step();
+	}
+	torch::Tensor ypred = net.forward(x);
+
+	std::cout << torch::hstack({y, ypred}) << std::endl;
 
 	return 0;
 }
