@@ -68,8 +68,6 @@ namespace ANNs {
 	void AllCalls();
 }
 
-
-
 int main(int argc, char** args) {
 
 	/*
@@ -77,7 +75,6 @@ int main(int argc, char** args) {
 	Gradient_Descent::AllCalls();
 	ANNs::AllCalls();
 	*/
-	ANNs::ANN_class_ModuleDict_classification();
 
 	return 0;
 }
@@ -940,7 +937,7 @@ void ANNs::ANN_class_ModuleDict_classification() {
 	std::vector<double> bx(bx_t.data_ptr<float>(), bx_t.data_ptr<float>() + bx_t.numel());
 	std::vector<double> by(by_t.data_ptr<float>(), by_t.data_ptr<float>() + by_t.numel());
 
-	plot_data(ax, ay, bx, by, "plots/ANN_classifier_1.png");
+	plot_data(ax, ay, bx, by, "plots/ANN_classifier_ModuleDict_1.png");
 
 	torch::Tensor labels = torch::vstack({ torch::zeros({nPerClust, 1}), torch::ones({nPerClust, 1}) });
 
@@ -977,7 +974,7 @@ void ANNs::ANN_class_ModuleDict_classification() {
 
 	torch::Tensor predictions = ANNclassify.forward(data);
 
-	plot_losses(losses, numepochs, "plots/ANN_classifier_3_losses.png");
+	plot_losses(losses, numepochs, "plots/ANN_classifier_ModuleDict_3_losses.png");
 
 	int errors = 0;
 	bool y = false;
@@ -1024,7 +1021,7 @@ void ANNs::ANN_class_ModuleDict_classification() {
 		}
 	}
 
-	plot_data_err(catAx, catAy, catBx, catBy, errx, erry, "plots/ANN_classifier_2_pred.png");
+	plot_data_err(catAx, catAy, catBx, catBy, errx, erry, "plots/ANN_classifier_ModuleDict_2_pred.png");
 
 #pragma endregion
 }
