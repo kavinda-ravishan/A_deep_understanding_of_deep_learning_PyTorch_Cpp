@@ -51,35 +51,23 @@ namespace ANNs {
 
 	void ANN_class_classification();
 
+	class ANN_ModuleDict : public torch::nn::Module {
+
+	private:
+		torch::nn::ModuleDict ann_dict{ nullptr };
+
+	public:
+		ANN_ModuleDict();
+
+		torch::Tensor forward(torch::Tensor x);
+	};
+
+	void ANN_class_ModuleDict_classification();
+
 	void AllCalls();
 }
 
-class ANN_ModuleDict : public torch::nn::Module {
 
-private:
-
-	torch::nn::ModuleDict ann_dict{ nullptr };
-
-public:
-
-	ANN_ModuleDict() {
-		
-		torch::OrderedDict<std::string, std::shared_ptr<Module>> ordereddict = {
-			{"input", torch::nn::Linear(1, 2).ptr()},
-			{"output", torch::nn::Linear(2, 1).ptr()},
-		};
-		torch::nn::ModuleDict dict(ordereddict);
-		ann_dict = register_module("ann_dict", dict);
-	}
-
-	torch::Tensor forward(torch::Tensor x) {
-
-		x = ann_dict["input"]->as<torch::nn::Linear>()->forward(x);
-		x = ann_dict["output"]->as<torch::nn::Linear>()->forward(x);
-
-		return x;
-	}
-};
 
 int main(int argc, char** args) {
 
@@ -88,31 +76,7 @@ int main(int argc, char** args) {
 	Gradient_Descent::AllCalls();
 	ANNs::AllCalls();
 	*/
-
-	torch::Tensor y = torch::reshape(torch::arange(1, 20, 2, torch::kFloat), { -1, 1 });
-	torch::Tensor x = torch::reshape(torch::arange(y.size(0), torch::kFloat), { -1, 1 });
-
-	ANN_ModuleDict net;
-
-	float learningRate = 0.01;
-	torch::optim::SGD optimizer(net.parameters(), learningRate);
-
-	int numepochs = 1000;
-	torch::Tensor losses = torch::zeros(numepochs, torch::kFloat);
-
-	for (int i = 0; i < numepochs; i++) {
-		torch::Tensor yhat = net.forward(x);
-
-		torch::Tensor loss = torch::mse_loss(yhat, y);
-		losses[i] = loss;
-
-		optimizer.zero_grad();
-		loss.backward();
-		optimizer.step();
-	}
-	torch::Tensor ypred = net.forward(x);
-
-	std::cout << torch::hstack({y, ypred}) << std::endl;
+	
 
 	return 0;
 }
@@ -914,6 +878,143 @@ void ANNs::ANN_class_classification() {
 #pragma endregion
 }
 
+ANNs::ANN_ModuleDict::ANN_ModuleDict() {
+
+	torch::OrderedDict<std::string, std::shared_ptr<Module>> ordereddict = {
+		{"input", torch::nn::Linear(2, 1).ptr()},
+		{"output", torch::nn::Linear(1, 1).ptr()},
+	};
+	torch::nn::ModuleDict dict(ordereddict);
+	ann_dict = register_module("ann_dict", dict);
+}
+
+torch::Tensor ANNs::ANN_ModuleDict::forward(torch::Tensor x) {
+
+	x = ann_dict["input"]->as<torch::nn::Linear>()->forward(x);
+	x = torch::relu(x);
+	x = ann_dict["output"]->as<torch::nn::Linear>()->forward(x);
+	x = torch::sigmoid(x);
+
+	return x;
+}
+
+void ANNs::ANN_class_ModuleDict_classification() {
+
+#pragma region Create data
+
+	int nPerClust = 100;
+	int blur = 1;
+
+	int A[] = { 1, 1 }; // centroid category 1
+	int	B[] = { 5, 1 }; // centroid category 2
+
+
+	torch::Tensor ax_t = A[0] + torch::randn({ nPerClust }, torch::TensorOptions(torch::kCPU).dtype(at::kFloat)) * blur;
+	torch::Tensor ay_t = A[1] + torch::randn({ nPerClust }, torch::TensorOptions(torch::kCPU).dtype(at::kFloat)) * blur;
+	torch::Tensor bx_t = B[0] + torch::randn({ nPerClust }, torch::TensorOptions(torch::kCPU).dtype(at::kFloat)) * blur;
+	torch::Tensor by_t = B[1] + torch::randn({ nPerClust }, torch::TensorOptions(torch::kCPU).dtype(at::kFloat)) * blur;
+
+	std::vector<double> ax(ax_t.data_ptr<float>(), ax_t.data_ptr<float>() + ax_t.numel());
+	std::vector<double> ay(ay_t.data_ptr<float>(), ay_t.data_ptr<float>() + ay_t.numel());
+	std::vector<double> bx(bx_t.data_ptr<float>(), bx_t.data_ptr<float>() + bx_t.numel());
+	std::vector<double> by(by_t.data_ptr<float>(), by_t.data_ptr<float>() + by_t.numel());
+
+	plot_data(ax, ay, bx, by, "plots/ANN_classifier_1.png");
+
+	torch::Tensor labels = torch::vstack({ torch::zeros({nPerClust, 1}), torch::ones({nPerClust, 1}) });
+
+	torch::Tensor dataA = torch::transpose(torch::stack({ ax_t, ay_t }), 1, 0);
+	torch::Tensor dataB = torch::transpose(torch::stack({ bx_t, by_t }), 1, 0);
+
+	torch::Tensor data = torch::vstack({ dataA, dataB });
+
+#pragma endregion
+
+#pragma region creating and train the model
+
+	/*torch::nn::Sequential ANNclassify(
+		torch::nn::Linear(2, 1),
+		torch::nn::ReLU(),
+		torch::nn::Linear(1, 1),
+		torch::nn::Sigmoid()
+	);*/
+
+	ANNs::ANN_ModuleDict ANNclassify;
+
+	float learningRate = 0.01;
+	torch::optim::SGD optimizer(ANNclassify.parameters(), learningRate);
+
+	int numepochs = 1000;
+	torch::Tensor losses = torch::zeros(numepochs, torch::kFloat32);
+
+	for (int i = 0; i < numepochs; i++) {
+		torch::Tensor yhat = ANNclassify.forward(data);
+
+		torch::Tensor loss = torch::binary_cross_entropy(yhat, labels);
+		losses[i] = loss;
+
+		optimizer.zero_grad();
+		loss.backward();
+		optimizer.step();
+	}
+#pragma endregion
+
+#pragma region make predictions
+
+	torch::Tensor predictions = ANNclassify.forward(data);
+
+	plot_losses(losses, numepochs, "plots/ANN_classifier_3_losses.png");
+
+	int errors = 0;
+	bool y = false;
+	bool yHat = false;
+
+	vector<double> errx;
+	vector<double> erry;
+
+	float threshold = 0.5;
+
+	for (int i = 0; i < nPerClust * 2; i++) {
+
+		y = false;
+		yHat = false;
+
+		if (labels[i].item<int>() == 1)
+			y = true;
+		if (predictions[i].item<float>() > threshold)
+			yHat = true;
+
+		if (y != yHat) {
+
+			errx.push_back(data[i][0].item<double>());
+			erry.push_back(data[i][1].item<double>());
+			errors++;
+		}
+	}
+	std::cout << "Accuracy : " << 100 * (((nPerClust * 2) - errors) / float(nPerClust * 2)) << "%" << std::endl;
+
+	vector<double> catAx;
+	vector<double> catAy;
+	vector<double> catBx;
+	vector<double> catBy;
+
+	for (int i = 0; i < nPerClust * 2; i++) {
+
+		if (predictions[i].item<float>() <= threshold) {
+			catAx.push_back(data[i][0].item<double>());
+			catAy.push_back(data[i][1].item<double>());
+		}
+		else {
+			catBx.push_back(data[i][0].item<double>());
+			catBy.push_back(data[i][1].item<double>());
+		}
+	}
+
+	plot_data_err(catAx, catAy, catBx, catBy, errx, erry, "plots/ANN_classifier_2_pred.png");
+
+#pragma endregion
+}
+
 void ANNs::AllCalls() {
 
 	ANN_regression();
@@ -921,4 +1022,5 @@ void ANNs::AllCalls() {
 	Multilayer_ANN_classification();
 	ANN_iris_dataset();
 	ANN_class_classification();
+	ANNs::ANN_class_ModuleDict_classification();
 }
