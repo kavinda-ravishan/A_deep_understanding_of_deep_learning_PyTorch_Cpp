@@ -1,10 +1,12 @@
-#include <torch/torch.h>
-#include <opencv2/opencv.hpp>
+#include "pch.h"
 
 int main(int argc, char** args) {
 
-	torch::Tensor;
-	cv::Mat a;
+	torch::Tensor t = torch::randn({5, 5});
+	cv::Mat i(cv::Size(1, 49), CV_64FC1);
+	
+	std::cout << t << std::endl;
+	std::cout << i << std::endl;
 	
 	return 0;
 }
