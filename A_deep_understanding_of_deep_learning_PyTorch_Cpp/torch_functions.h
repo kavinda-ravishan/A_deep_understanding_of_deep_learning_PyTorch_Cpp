@@ -82,6 +82,8 @@ namespace ANNs {
 
 	void ANN_iris_dataset();
 
+	void Number_of_parameters();
+
 	class ANNclassifyClass :public torch::nn::Module {
 
 	private:

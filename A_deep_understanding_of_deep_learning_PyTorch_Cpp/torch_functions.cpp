@@ -1010,6 +1010,51 @@ void ANNs::ANN_iris_dataset() {
 
 }
 
+void ANNs::Number_of_parameters() {
+
+	torch::nn::Sequential net = torch::nn::Sequential(
+		torch::nn::Linear(2, 4),
+		torch::nn::Linear(4, 3)
+	);
+
+	torch::Tensor out = net->forward(torch::randn({ 5, 2 }));
+
+	std::cout << out << std::endl;
+	std::cout << std::endl;
+
+	std::cout << net << std::endl;
+	std::cout << std::endl;
+
+	torch::OrderedDict<std::string, torch::Tensor> keypara = net->named_parameters();
+
+	std::vector<std::string> parakeys = keypara.keys();
+
+	int numNodes = 0;
+
+	for (std::string key : parakeys) {
+
+		if (key.find("bias") < 99999) {
+
+			numNodes += keypara[key].size(0);
+		}
+
+
+		std::cout << key << std::endl;
+		std::cout << keypara[key] << std::endl;
+		std::cout << std::endl;
+	}
+
+	std::cout << "Number of nodes : " << numNodes << std::endl;
+
+	torch::autograd::variable_list para = net->parameters();
+
+	for (torch::Tensor t : para) {
+
+		std::cout << t << std::endl;
+		std::cout << std::endl;
+	}
+}
+
 ANNs::ANNclassifyClass::ANNclassifyClass() {
 
 	input = register_module("input", torch::nn::Linear(2, 1));
@@ -1301,8 +1346,9 @@ void ANNs::AllCalls() {
 	ANN_classification();
 	Multilayer_ANN_classification();
 	ANN_iris_dataset();
+	Number_of_parameters();
 	ANN_class_classification();
-	ANNs::ANN_class_ModuleDict_classification();
+	ANN_class_ModuleDict_classification();
 }
 
 #pragma endregion
