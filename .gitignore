@@ -364,3 +364,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/Getting_Started_with_PyTorch_Cpp/models
+/Getting_Started_with_PyTorch_Cpp/videos
