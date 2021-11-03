@@ -119,6 +119,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\libtorch-win-shared-with-deps-debug-1.8.2+cpu\libtorch\include;$(SolutionDir)Dependencies\libtorch-win-shared-with-deps-debug-1.8.2+cpu\libtorch\include\torch\csrc\api\include;$(SolutionDir)Dependencies\opencv-4.5.1-vc14_vc15\build\include</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>Default</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -138,6 +139,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\libtorch-win-shared-with-deps-1.8.2+cpu\libtorch\include;$(SolutionDir)Dependencies\libtorch-win-shared-with-deps-1.8.2+cpu\libtorch\include\torch\csrc\api\include;$(SolutionDir)Dependencies\opencv-4.5.1-vc14_vc15\build\include</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>Default</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -158,6 +160,7 @@
   <ItemGroup>
     <ClInclude Include="Network.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Quantized_lanesNet.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
