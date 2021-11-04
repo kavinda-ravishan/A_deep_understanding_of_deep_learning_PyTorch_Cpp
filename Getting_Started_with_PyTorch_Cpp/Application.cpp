@@ -9,7 +9,7 @@ constexpr int kCols = 300;
 torch::Tensor CVtoTensor(cv::Mat img)
 {
 	cv::resize(img, img, cv::Size(kRows, kCols), 0, 0, cv::INTER_LINEAR);
-	cv::cvtColor(img, img, cv::COLOR_RGB2RGBA);
+	cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 	auto img_tensor = torch::from_blob(img.data, { kRows, kCols, 3 }, torch::kByte);
 	img_tensor = img_tensor.permute({ 2, 0, 1 }).toType(torch::kFloat).div_(255);
 	return img_tensor;
@@ -114,26 +114,76 @@ public:
 		return { images_[index], targets_[index] };
 	}
 	torch::optional<size_t> size() const override
-	{}
+	{
+		return images_.size(0);
+	}
 	bool is_train() const noexcept
-	{}
+	{
+		return (mode_ == Mode::kTrain);
+	}
 	const torch::Tensor& images() const
-	{}
+	{
+		return images_;
+	}
 	const torch::Tensor& targets() const
-	{}
+	{
+		return targets_;
+	}
 private:
 	torch::Tensor images_;
 	torch::Tensor targets_;
 	Mode mode_;
 };
 
+cv::Mat TensorToCV(torch::Tensor x)
+{
+	x = x.permute({ 1, 2, 0 });
+	x = x.mul(0.5).add(0.5).mul(255).clamp(0, 255).to(torch::kByte);
+	x = x.contiguous();
+
+	int height = x.size(0);
+	int width = x.size(1);
+
+	cv::Mat output(cv::Size(width, height), CV_8UC3);
+	std::memcpy((void*)output.data, x.data_ptr(), sizeof(torch::kU8) * x.numel());
+	return output.clone();
+}
+
 int main(int argc, char** args) 
 {
+	const std::string root = "./dataset";
 	/*
-	const std::string root = "E:/Projects/Git_Projects/A_deep_understanding_of_deep_learning_PyTorch_Cpp/Getting_Started_with_PyTorch_Cpp/dataset";
-	bool train = false;
-	std::pair<torch::Tensor, torch::Tensor> data = read_data(root, !train);
+	bool train = true;
+	std::pair<torch::Tensor, torch::Tensor> data = read_data(root, train);
 	*/
+
+	auto train_dataset = CatGog(root)
+		.map(torch::data::transforms::Normalize<>({ 0.5, 0.5, 0.5 }, { 0.5, 0.5, 0.5 }))
+		.map(torch::data::transforms::Stack<>());
+
+	auto train_loader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
+		std::move(train_dataset), 4
+		);
+
+	auto test_dataset = CatGog(root, CatGog::Mode::kTest)
+		.map(torch::data::transforms::Normalize<>({ 0.5, 0.5, 0.5 }, { 0.5, 0.5, 0.5 }))
+		.map(torch::data::transforms::Stack<>());
+
+	auto test_loader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
+		std::move(test_dataset), 4
+		);
+
+	for (auto& batch : *train_loader)
+	{
+		auto img = batch.data;
+		auto labels = batch.target;
+
+		auto out = TensorToCV(img[0]);
+		cv::imshow("win", out);
+		int k = cv::waitKey(0);
+		break;
+	}
+
 
 	return 0;
 }
