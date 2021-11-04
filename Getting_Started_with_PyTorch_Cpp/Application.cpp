@@ -152,10 +152,6 @@ cv::Mat TensorToCV(torch::Tensor x)
 int main(int argc, char** args) 
 {
 	const std::string root = "./dataset";
-	/*
-	bool train = true;
-	std::pair<torch::Tensor, torch::Tensor> data = read_data(root, train);
-	*/
 
 	auto train_dataset = CatGog(root)
 		.map(torch::data::transforms::Normalize<>({ 0.5, 0.5, 0.5 }, { 0.5, 0.5, 0.5 }))
@@ -174,6 +170,17 @@ int main(int argc, char** args)
 		);
 
 	for (auto& batch : *train_loader)
+	{
+		auto img = batch.data;
+		auto labels = batch.target;
+
+		auto out = TensorToCV(img[0]);
+		cv::imshow("win", out);
+		int k = cv::waitKey(0);
+		break;
+	}
+
+	for (auto& batch : *test_loader)
 	{
 		auto img = batch.data;
 		auto labels = batch.target;
