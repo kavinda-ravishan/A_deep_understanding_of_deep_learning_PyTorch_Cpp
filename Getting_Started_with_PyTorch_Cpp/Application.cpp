@@ -113,16 +113,14 @@ int main(int argc, char** args)
 		.map(torch::data::transforms::Stack<>());
 
 	auto train_loader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
-		std::move(train_dataset), 4
-		);
+		std::move(train_dataset), 4);
 
 	auto test_dataset = CatGog(root, CatGog::Mode::kTest)
 		.map(torch::data::transforms::Normalize<>({ 0.5, 0.5, 0.5 }, { 0.5, 0.5, 0.5 }))
 		.map(torch::data::transforms::Stack<>());
 
 	auto test_loader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
-		std::move(test_dataset), 4
-		);
+		std::move(test_dataset), kTestSize);
 
 	for (auto& batch : *train_loader)
 	{
@@ -135,13 +133,14 @@ int main(int argc, char** args)
 			cv::imshow("win", out);
 			int k = cv::waitKey(10);
 		}
-
 	}
 
 	for (auto& batch : *test_loader)
 	{
 		auto img = batch.data;
 		auto labels = batch.target;
+
+		std::cout << img.sizes() << std::endl;
 
 		for (int i = 0; i < img.size(0); i++)
 		{
