@@ -129,10 +129,13 @@ int main(int argc, char** args)
 		auto img = batch.data;
 		auto labels = batch.target;
 
-		auto out = TensorToCV(img[0]);
-		cv::imshow("win", out);
-		int k = cv::waitKey(0);
-		break;
+		for (int i = 0; i < img.size(0); i++)
+		{
+			auto out = TensorToCV(img[i]);
+			cv::imshow("win", out);
+			int k = cv::waitKey(10);
+		}
+
 	}
 
 	for (auto& batch : *test_loader)
@@ -140,10 +143,12 @@ int main(int argc, char** args)
 		auto img = batch.data;
 		auto labels = batch.target;
 
-		auto out = TensorToCV(img[0]);
-		cv::imshow("win", out);
-		int k = cv::waitKey(0);
-		break;
+		for (int i = 0; i < img.size(0); i++)
+		{
+			auto out = TensorToCV(img[i]);
+			cv::imshow("win", out);
+			int k = cv::waitKey(10);
+		}
 	}
 
 	return 0;
