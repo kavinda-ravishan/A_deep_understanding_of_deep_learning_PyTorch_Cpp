@@ -107,13 +107,14 @@ cv::Mat TensorToCV(torch::Tensor x)
 int main(int argc, char** args) 
 {
 	const std::string root = "./dataset";
+	int batchSize = 4;
 
 	auto train_dataset = CatGog(root)
 		.map(torch::data::transforms::Normalize<>({ 0.5, 0.5, 0.5 }, { 0.5, 0.5, 0.5 }))
 		.map(torch::data::transforms::Stack<>());
 
 	auto train_loader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
-		std::move(train_dataset), 4);
+		std::move(train_dataset), batchSize);
 
 	auto test_dataset = CatGog(root, CatGog::Mode::kTest)
 		.map(torch::data::transforms::Normalize<>({ 0.5, 0.5, 0.5 }, { 0.5, 0.5, 0.5 }))
@@ -131,6 +132,7 @@ int main(int argc, char** args)
 		{
 			auto out = TensorToCV(img[i]);
 			cv::imshow("win", out);
+			std::cout << labels[i].item<int>() << std::endl;
 			int k = cv::waitKey(10);
 		}
 	}
@@ -140,12 +142,11 @@ int main(int argc, char** args)
 		auto img = batch.data;
 		auto labels = batch.target;
 
-		std::cout << img.sizes() << std::endl;
-
 		for (int i = 0; i < img.size(0); i++)
 		{
 			auto out = TensorToCV(img[i]);
 			cv::imshow("win", out);
+			std::cout << labels[i].item<int>() << std::endl;
 			int k = cv::waitKey(10);
 		}
 	}
