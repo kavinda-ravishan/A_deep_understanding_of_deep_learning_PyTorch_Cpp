@@ -15,53 +15,10 @@ torch::Tensor CVtoTensor(cv::Mat img)
 	return img_tensor;
 }
 
-bool ListFiles(std::wstring path, std::wstring mask, std::vector<std::wstring>& files) {
-	HANDLE hFind = INVALID_HANDLE_VALUE;
-	WIN32_FIND_DATA ffd;
-	std::wstring spec;
-	std::stack<std::wstring> directories;
-
-	directories.push(path);
-	files.clear();
-
-	while (!directories.empty()) {
-		path = directories.top();
-		spec = path + L"\\" + mask;
-		directories.pop();
-
-		hFind = FindFirstFile(spec.c_str(), &ffd);
-		if (hFind == INVALID_HANDLE_VALUE) {
-			return false;
-		}
-
-		do {
-			if (wcscmp(ffd.cFileName, L".") != 0 &&
-				wcscmp(ffd.cFileName, L"..") != 0) {
-				if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-					directories.push(path + L"\\" + ffd.cFileName);
-				}
-				else {
-					files.push_back(path + L"\\" + ffd.cFileName);
-				}
-			}
-		} while (FindNextFile(hFind, &ffd) != 0);
-
-		if (GetLastError() != ERROR_NO_MORE_FILES) {
-			FindClose(hFind);
-			return false;
-		}
-
-		FindClose(hFind);
-		hFind = INVALID_HANDLE_VALUE;
-	}
-
-	return true;
-}
-
 std::pair<torch::Tensor, torch::Tensor> read_data(const std::string& root, bool train)
 {
 	int i = 0;
-	std::wstring ext(L"*.jpg");
+	std::string ext("/*.jpg");
 	const auto num_samples = train ? kTrainSize : kTestSize;
 	const auto folder = train ? root + "/train" : root + "/test";
 	auto targets = torch::empty(num_samples, torch::kInt64);
@@ -71,26 +28,24 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string& root, bool 
 	std::string dog_folder = folder + "/dogs";
 	std::vector<std::string> folders = { cat_folder, dog_folder };
 
-	std::vector<std::wstring> files;
+	std::cout << "Loading images from "<< folder << std::endl;
 
 	int64_t label = 0;
 	for (auto& f : folders)
 	{
-		std::wstring path(f.begin(), f.end());
-		if (ListFiles(path, ext, files)) {
-			for (std::vector<std::wstring>::iterator it = files.begin(); it != files.end(); ++it)
-			{
-				std::cout << label << " : " << i << std::endl;
+		std::vector<std::string> files;
+		cv::glob(f + ext, files, false);
 
-				std::wstring wstr = it->c_str();
+		for (std::string& p : files)
+		{
+			std::cout << label << " : " << i << std::endl;
 
-				std::string str(wstr.begin(), wstr.end());
-				cv::Mat img = cv::imread(str);
-				auto img_tensor = CVtoTensor(img);
-				images[i] = img_tensor;
-				targets[i] = torch::tensor(label, torch::kInt64);
-				i++;
-			}
+			cv::Mat img = cv::imread(p);
+			auto img_tensor = CVtoTensor(img);
+			images[i] = img_tensor;
+			targets[i] = torch::tensor(label, torch::kInt64);
+
+			i++;
 		}
 		label++;
 	}
@@ -190,7 +145,6 @@ int main(int argc, char** args)
 		int k = cv::waitKey(0);
 		break;
 	}
-
 
 	return 0;
 }
