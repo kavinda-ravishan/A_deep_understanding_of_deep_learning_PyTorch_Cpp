@@ -72,6 +72,62 @@ int read_csv(
 
 	return size;
 }
+int read_csv(
+	const std::string& root,
+	std::vector<std::vector<float>>& X,
+	std::vector<int>& y,
+	std::vector<std::string>& colNames
+)
+{
+	std::vector<std::vector<std::string>> data;
+
+	int size = read_csv(root, data, colNames);
+
+	int numCols = colNames.size();
+
+	for (int i = 0; i < numCols - 1; i++) {
+
+		X.push_back(std::vector<float>(size));
+	}
+
+	int row_i;
+	for (int i = 0; i < numCols - 1; i++) {
+		row_i = 0;
+		for (std::string value : data[i]) {
+
+			X[i][row_i] = std::stod(value);
+			row_i++;
+		}
+	}
+
+	int column = numCols - 1;
+	std::vector<std::string> categories;
+	bool is_category_exists = false;
+	y.resize(size);
+
+	row_i = 0;
+	for (std::string label : data[column]) {
+
+		is_category_exists = false;
+		int i = 0;
+		for (std::string category : categories) {
+
+			if (category == label) {
+
+				is_category_exists = true;
+				break;
+			}
+			i++;
+		}
+
+		if (!is_category_exists) categories.push_back(label);
+
+		y[row_i] = i;
+		row_i++;
+	}
+
+	return size;
+}
 
 std::pair<torch::Tensor, torch::Tensor> read_data(const std::string& root)
 {
@@ -132,61 +188,61 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string& root)
 	return { X, y };
 }
 
-int read_csv(
-	const std::string& root, 
-	std::vector<std::vector<float>>& X, 
-	std::vector<int>& y,
-	std::vector<std::string>& colNames
+std::pair<int, int> train_test_split(
+	const std::vector<std::vector<float>>& X,
+	const std::vector<int>& y,
+	std::vector<std::vector<float>>& X_train,
+	std::vector<std::vector<float>>& X_test,
+	std::vector<int>& y_train,
+	std::vector<int>& y_test,
+	float train_percentage,
+	int num_data_points
 )
 {
-	std::vector<std::vector<std::string>> data;
+	auto randIndex = torch::randperm(num_data_points);
 
-	int size = read_csv(root, data, colNames);
+	int train_size = int(num_data_points * train_percentage);
+	int test_size = num_data_points - train_size;
 
-	int numCols = colNames.size();
-
-	for (int i = 0; i < numCols - 1; i++) {
-
-		X.push_back(std::vector<float>(size));
+	for (int i = 0; i < X.size(); i++)
+	{
+		X_train.push_back(std::vector<float>(train_size));
+	}
+	for (int i = 0; i < X.size(); i++)
+	{
+		X_test.push_back(std::vector<float>(test_size));
 	}
 
-	int row_i;
-	for (int i = 0; i < numCols - 1; i++) {
-		row_i = 0;
-		for (std::string value : data[i]) {
+	y_train.resize(train_size);
+	y_test.resize(test_size);
 
-			X[i][row_i] = std::stod(value);
-			row_i++;
+	int randRow = 0;
+
+	// train set
+	for (int row = 0; row < train_size; row++)
+	{
+		randRow = randIndex[row].item<int>();
+
+		for (int col = 0; col < X.size(); col++)
+		{
+			X_train[col][row] = X[col][randRow];
 		}
+		y_train[row] = y[randRow];
 	}
 
-	int column = numCols - 1;
-	std::vector<std::string> categories;
-	bool is_category_exists = false;
-	y.resize(size);
+	//test set
+	for (int row = train_size; row < num_data_points; row++)
+	{
+		randRow = randIndex[row].item<int>();
 
-	row_i = 0;
-	for (std::string label : data[column]) {
-
-		is_category_exists = false;
-		int i = 0;
-		for (std::string category : categories) {
-
-			if (category == label) {
-
-				is_category_exists = true;
-				break;
-			}
-			i++;
+		for (int col = 0; col < X.size(); col++)
+		{
+			X_test[col][row - train_size] = X[col][randRow];
 		}
-
-		if (!is_category_exists) categories.push_back(label);
-
-		y[row_i] = i;
-		row_i++;
+		y_test[row - train_size] = y[randRow];
 	}
 
-	return size;
+	return { train_size, test_size };
 }
 
 struct IrisDataSet : torch::data::datasets::Dataset<IrisDataSet>
@@ -221,44 +277,41 @@ private:
 
 int main(int argc, char** args) {
 	
-	//auto data = read_data("./datasets/iris.csv");
-	//auto randIndex = torch::randperm(data.first.size(0));
 
 	std::vector<std::vector<float>> X;
 	std::vector<int> y;
 	std::vector<std::string> colNames;
 
-	int size = read_csv("./datasets/iris.csv", X, y, colNames);
+	int num_data_points = read_csv("./datasets/iris.csv", X, y, colNames);
 
-	std::cout << colNames << std::endl;
+	std::vector<std::vector<float>> X_train;
+	std::vector<std::vector<float>> X_test;
+	std::vector<int> y_train;
+	std::vector<int> y_test;
+
+	float train_percentage = 0.8;
+
+	auto train_test_sizes = train_test_split(X, y, X_train, X_test, y_train, y_test, train_percentage, num_data_points);
+
+	std::cout << train_test_sizes.first << std::endl;
+	std::cout << train_test_sizes.second << std::endl;
+
+	std::cout << y_train.size() << std::endl;
+	std::cout << y_test.size() << std::endl;
 
 	
-	for (float i : X[0])
+	for (int i : y_train)
 	{
-		std::cout << i << " ";
-	}
-	std::cout << std::endl;
-	for (float i : X[1])
-	{
-		std::cout << i << " ";
-	}
-	std::cout << std::endl;
-	for (float i : X[2])
-	{
-		std::cout << i << " ";
-	}
-	std::cout << std::endl;
-	for (float i : X[3])
-	{
-		std::cout << i << " ";
+		std::cout << i <<" ";
 	}
 	std::cout << std::endl;
 
-	for (float i : y)
+	for (int i : y_test)
 	{
 		std::cout << i << " ";
 	}
 	std::cout << std::endl;
+	
 
 	/*
 	std::string root = "./datasets/iris.csv";
