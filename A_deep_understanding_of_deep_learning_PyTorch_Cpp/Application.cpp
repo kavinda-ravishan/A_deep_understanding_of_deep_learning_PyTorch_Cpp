@@ -129,65 +129,6 @@ int read_csv(
 	return size;
 }
 
-std::pair<torch::Tensor, torch::Tensor> read_data(const std::string& root)
-{
-	std::vector<std::vector<std::string>> data;
-	std::vector<std::string> colNames;
-
-	read_csv(root, data, colNames);
-
-	int numCols = data.size();
-
-	std::vector<std::vector<float>> vX;
-	for (int i = 0; i < numCols - 1; i++) {
-
-		vX.push_back(std::vector<float>());
-	}
-
-	for (int i = 0; i < numCols - 1; i++) {
-
-		for (std::string value : data[i]) {
-
-			vX[i].push_back(std::stod(value));
-		}
-	}
-
-	int column = numCols - 1;
-	std::vector<int> vy;
-	std::vector<std::string> categories;
-	bool is_category_exists = false;
-
-	for (std::string label : data[column]) {
-
-		is_category_exists = false;
-		int i = 0;
-		for (std::string category : categories) {
-
-			if (category == label) {
-
-				is_category_exists = true;
-				break;
-			}
-			i++;
-		}
-
-		if (!is_category_exists) categories.push_back(label);
-
-		vy.push_back(i);
-	}
-
-	torch::Tensor X0 = torch::tensor(vX[0], torch::kFloat);
-	torch::Tensor X1 = torch::tensor(vX[1], torch::kFloat);
-	torch::Tensor X2 = torch::tensor(vX[2], torch::kFloat);
-	torch::Tensor X3 = torch::tensor(vX[3], torch::kFloat);
-
-	torch::Tensor X = torch::stack({ X0, X1, X2, X3 }, 1);
-
-	torch::Tensor y = torch::tensor(vy, torch::kInt64);
-
-	return { X, y };
-}
-
 std::pair<int, int> train_test_split(
 	const std::vector<std::vector<float>>& X,
 	const std::vector<int>& y,
@@ -248,12 +189,7 @@ std::pair<int, int> train_test_split(
 struct IrisDataSet : torch::data::datasets::Dataset<IrisDataSet>
 {
 public:
-	explicit IrisDataSet(const std::string& root)
-	{
-		auto data = read_data(root);
-		X_ = std::move(data.first);
-		y_ = std::move(data.second);
-	}
+	explicit IrisDataSet(torch::Tensor& X, torch::Tensor& y):X_(X), y_(y){}
 	torch::data::Example<> get(size_t index) override
 	{
 		return { X_[index], y_[index] };
@@ -277,12 +213,13 @@ private:
 
 int main(int argc, char** args) {
 	
-
 	std::vector<std::vector<float>> X;
 	std::vector<int> y;
 	std::vector<std::string> colNames;
 
-	int num_data_points = read_csv("./datasets/iris.csv", X, y, colNames);
+	std::string root = "./datasets/iris.csv";
+
+	int num_data_points = read_csv(root, X, y, colNames);
 
 	std::vector<std::vector<float>> X_train;
 	std::vector<std::vector<float>> X_test;
@@ -293,46 +230,76 @@ int main(int argc, char** args) {
 
 	auto train_test_sizes = train_test_split(X, y, X_train, X_test, y_train, y_test, train_percentage, num_data_points);
 
-	std::cout << train_test_sizes.first << std::endl;
-	std::cout << train_test_sizes.second << std::endl;
+	torch::Tensor X_train_t = torch::stack(
+		{
+			torch::tensor(X_train[0], torch::kFloat),
+			torch::tensor(X_train[1], torch::kFloat),
+			torch::tensor(X_train[2], torch::kFloat),
+			torch::tensor(X_train[3], torch::kFloat)
+		}, 1);
 
-	std::cout << y_train.size() << std::endl;
-	std::cout << y_test.size() << std::endl;
+	torch::Tensor X_test_t = torch::stack(
+		{
+			torch::tensor(X_test[0], torch::kFloat),
+			torch::tensor(X_test[1], torch::kFloat),
+			torch::tensor(X_test[2], torch::kFloat),
+			torch::tensor(X_test[3], torch::kFloat)
+		}, 1);
+
+	torch::Tensor y_train_t = torch::tensor(y_train, torch::kInt64);
+	torch::Tensor y_test_t = torch::tensor(y_test, torch::kInt64);
 
 	
-	for (int i : y_train)
-	{
-		std::cout << i <<" ";
-	}
-	std::cout << std::endl;
+	int batchSize = 10;
 
-	for (int i : y_test)
-	{
-		std::cout << i << " ";
+	auto train_dataset = IrisDataSet(X_train_t, y_train_t).map(torch::data::transforms::Stack<>());
+
+	auto train_loader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
+		std::move(train_dataset), batchSize);
+
+
+	torch::nn::Sequential ANNclassify(
+		torch::nn::Linear(4, 64),
+		torch::nn::ReLU(),
+		torch::nn::Linear(64, 64),
+		torch::nn::ReLU(),
+		torch::nn::Linear(64, 3)
+	);
+
+	float learningRate = 0.01;
+	torch::optim::SGD optimizer(ANNclassify->parameters(), learningRate);
+
+	int numepochs = 100;
+
+	for (int i = 0; i < numepochs; i++) {
+
+		for (auto& batch : *train_loader)
+		{
+			auto X = batch.data;
+			auto y = batch.target;
+
+			torch::Tensor yhat = ANNclassify->forward(X);
+
+			torch::Tensor loss = torch::nn::functional::cross_entropy(yhat, y);
+
+			optimizer.zero_grad();
+			loss.backward();
+			optimizer.step();
+		}
+
+		torch::Tensor pred = torch::argmax(ANNclassify->forward(X_test_t), 1);
+
+		int numPreds = pred.size(0);
+		int num_correct_preds = 0;
+		for (int i = 0; i < numPreds; i++)
+		{
+			if (pred[i].item<int>() == y_test_t[i].item<int>()) num_correct_preds++;
+		}
+
+		std::cout << "Accuracy : " << (num_correct_preds * 100) / float(numPreds) << "%" << std::endl;
 	}
-	std::cout << std::endl;
+
 	
-
-	/*
-	std::string root = "./datasets/iris.csv";
-	int batchSize = 4;
-
-	auto dataset = IrisDataSet(root).map(torch::data::transforms::Stack<>());;
-
-	auto data_loader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
-		std::move(dataset), batchSize);
-
-	for (auto& batch : *data_loader)
-	{
-		auto X = batch.data;
-		auto y = batch.target;
-
-		std::cout << X << std::endl;
-		std::cout << y << std::endl;
-		std::cout << std::endl;
-
-	}
-	*/
 	return 0;
 }
 
