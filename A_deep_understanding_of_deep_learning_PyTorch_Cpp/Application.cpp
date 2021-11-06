@@ -19,7 +19,7 @@ std::vector<std::string> split(const std::string& s, char delimiter) {
 	return tokens;
 }
 
-void read_csv(
+int read_csv(
 	const std::string& path,
 	std::vector<std::vector<std::string>>& data,
 	std::vector<std::string>& colNames
@@ -29,6 +29,7 @@ void read_csv(
 	std::string headstr;
 	std::vector<std::string> filestr;
 	std::ifstream file;
+	int size = 0;
 	try {
 
 		file.open(path);
@@ -38,6 +39,7 @@ void read_csv(
 		while (getline(file, text)) {
 
 			filestr.push_back(text);
+			size++;
 		}
 		file.close();
 	}
@@ -53,18 +55,22 @@ void read_csv(
 
 	for (int i = 0; i < numCols; i++) {
 
-		data.push_back(std::vector<std::string>());
+		data.push_back(std::vector<std::string>(size));
 	}
 
+	int row_i = 0;
 	for (std::string line : filestr) {
 
 		std::vector<std::string> row = split(line, ',');
 
 		for (int i = 0; i < numCols; i++) {
 
-			data[i].push_back(row[i]);
+			data[i][row_i] = row[i];
 		}
+		row_i++;
 	}
+
+	return size;
 }
 
 std::pair<torch::Tensor, torch::Tensor> read_data(const std::string& root)
@@ -126,6 +132,63 @@ std::pair<torch::Tensor, torch::Tensor> read_data(const std::string& root)
 	return { X, y };
 }
 
+int read_csv(
+	const std::string& root, 
+	std::vector<std::vector<float>>& X, 
+	std::vector<int>& y,
+	std::vector<std::string>& colNames
+)
+{
+	std::vector<std::vector<std::string>> data;
+
+	int size = read_csv(root, data, colNames);
+
+	int numCols = colNames.size();
+
+	for (int i = 0; i < numCols - 1; i++) {
+
+		X.push_back(std::vector<float>(size));
+	}
+
+	int row_i;
+	for (int i = 0; i < numCols - 1; i++) {
+		row_i = 0;
+		for (std::string value : data[i]) {
+
+			X[i][row_i] = std::stod(value);
+			row_i++;
+		}
+	}
+
+	int column = numCols - 1;
+	std::vector<std::string> categories;
+	bool is_category_exists = false;
+	y.resize(size);
+
+	row_i = 0;
+	for (std::string label : data[column]) {
+
+		is_category_exists = false;
+		int i = 0;
+		for (std::string category : categories) {
+
+			if (category == label) {
+
+				is_category_exists = true;
+				break;
+			}
+			i++;
+		}
+
+		if (!is_category_exists) categories.push_back(label);
+
+		y[row_i] = i;
+		row_i++;
+	}
+
+	return size;
+}
+
 struct IrisDataSet : torch::data::datasets::Dataset<IrisDataSet>
 {
 public:
@@ -158,7 +221,46 @@ private:
 
 int main(int argc, char** args) {
 	
+	//auto data = read_data("./datasets/iris.csv");
+	//auto randIndex = torch::randperm(data.first.size(0));
 
+	std::vector<std::vector<float>> X;
+	std::vector<int> y;
+	std::vector<std::string> colNames;
+
+	int size = read_csv("./datasets/iris.csv", X, y, colNames);
+
+	std::cout << colNames << std::endl;
+
+	
+	for (float i : X[0])
+	{
+		std::cout << i << " ";
+	}
+	std::cout << std::endl;
+	for (float i : X[1])
+	{
+		std::cout << i << " ";
+	}
+	std::cout << std::endl;
+	for (float i : X[2])
+	{
+		std::cout << i << " ";
+	}
+	std::cout << std::endl;
+	for (float i : X[3])
+	{
+		std::cout << i << " ";
+	}
+	std::cout << std::endl;
+
+	for (float i : y)
+	{
+		std::cout << i << " ";
+	}
+	std::cout << std::endl;
+
+	/*
 	std::string root = "./datasets/iris.csv";
 	int batchSize = 4;
 
@@ -177,7 +279,7 @@ int main(int argc, char** args) {
 		std::cout << std::endl;
 
 	}
-
+	*/
 	return 0;
 }
 
