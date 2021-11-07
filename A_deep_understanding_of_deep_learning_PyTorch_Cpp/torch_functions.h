@@ -112,3 +112,61 @@ namespace ANNs {
 
 	void AllCalls();
 }
+
+namespace Overfittingand_cross_validation {
+
+	std::vector<std::string> split(const std::string& s, char delimiter);
+
+	int read_csv(
+		const std::string& path,
+		std::vector<std::vector<std::string>>& data,
+		std::vector<std::string>& colNames
+	);
+
+	int read_csv(
+		const std::string& root,
+		std::vector<std::vector<float>>& X,
+		std::vector<int>& y,
+		std::vector<std::string>& colNames
+	);
+
+	std::pair<int, int> train_test_split(
+		const std::vector<std::vector<float>>& X,
+		const std::vector<int>& y,
+		std::vector<std::vector<float>>& X_train,
+		std::vector<std::vector<float>>& X_test,
+		std::vector<int>& y_train,
+		std::vector<int>& y_test,
+		float train_percentage,
+		int num_data_points
+	);
+
+	struct IrisDataSet : torch::data::datasets::Dataset<IrisDataSet>
+	{
+	public:
+		explicit IrisDataSet(const torch::Tensor& X, const torch::Tensor& y) :X_(X), y_(y) {}
+		torch::data::Example<> get(size_t index) override
+		{
+			return { X_[index], y_[index] };
+		}
+		torch::optional<size_t> size() const override
+		{
+			return X_.size(0);
+		}
+		const torch::Tensor& X() const
+		{
+			return X_;
+		}
+		const torch::Tensor& y() const
+		{
+			return y_;
+		}
+	private:
+		torch::Tensor X_;
+		torch::Tensor y_;
+	};
+
+	void iris_dataset_dataloader_barch_train();
+
+	void ALLCalls();
+}
