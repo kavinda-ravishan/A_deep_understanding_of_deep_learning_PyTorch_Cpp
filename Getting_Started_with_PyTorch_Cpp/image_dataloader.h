@@ -1,4 +1,6 @@
-#include "pch.h"
+/*
+#include <torch/torch.h>
+#include <opencv2/opencv.hpp>
 
 constexpr int kTrainSize = 80;
 constexpr int kTestSize = 20;
@@ -9,26 +11,26 @@ constexpr int kCols = 300;
 torch::Tensor CVtoTensor(cv::Mat img)
 {
 	cv::resize(img, img, cv::Size(kRows, kCols), 0, 0, cv::INTER_LINEAR);
-	// cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+	cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
 	auto img_tensor = torch::from_blob(img.data, { kRows, kCols, 3 }, torch::kByte);
 	img_tensor = img_tensor.permute({ 2, 0, 1 }).toType(torch::kFloat).div_(255);
 	return img_tensor;
 }
 
-std::pair<std::vector<std::string>, torch::Tensor> read_data(const std::string& root, bool train)
+std::pair<torch::Tensor, torch::Tensor> read_data(const std::string& root, bool train)
 {
 	int i = 0;
 	std::string ext("/*.jpg");
 	const auto num_samples = train ? kTrainSize : kTestSize;
 	const auto folder = train ? root + "/train" : root + "/test";
 	auto targets = torch::empty(num_samples, torch::kInt64);
-	std::vector<std::string> images(num_samples);
+	auto images = torch::empty({ num_samples, 3, kRows, kCols }, torch::kFloat);
 
 	std::string cat_folder = folder + "/cats";
 	std::string dog_folder = folder + "/dogs";
 	std::vector<std::string> folders = { cat_folder, dog_folder };
 
-	std::cout << "Loading image paths from " << folder << std::endl;
+	std::cout << "Loading images from "<< folder << std::endl;
 
 	int64_t label = 0;
 	for (auto& f : folders)
@@ -38,16 +40,22 @@ std::pair<std::vector<std::string>, torch::Tensor> read_data(const std::string& 
 
 		for (std::string& p : files)
 		{
-			images[i] = p;
+			std::cout << label << " : " << i << std::endl;
+
+			cv::Mat img = cv::imread(p);
+			auto img_tensor = CVtoTensor(img);
+			images[i] = img_tensor;
 			targets[i] = torch::tensor(label, torch::kInt64);
+
 			i++;
 		}
 		label++;
 	}
+
 	return { images, targets };
 }
 
-struct CatGog : torch::data::datasets::Dataset<CatGog>
+struct CatGog: torch::data::datasets::Dataset<CatGog>
 {
 public:
 	enum Mode { kTrain, kTest };
@@ -60,20 +68,17 @@ public:
 	}
 	torch::data::Example<> get(size_t index) override
 	{
-		cv::Mat img = cv::imread(images_[index]);
-		auto img_tensor = CVtoTensor(img);
-
-		return { img_tensor, targets_[index] };
+		return { images_[index], targets_[index] };
 	}
 	torch::optional<size_t> size() const override
 	{
-		return images_.size();
+		return images_.size(0);
 	}
 	bool is_train() const noexcept
 	{
 		return (mode_ == Mode::kTrain);
 	}
-	const std::vector<std::string>& images() const
+	const torch::Tensor& images() const
 	{
 		return images_;
 	}
@@ -82,7 +87,7 @@ public:
 		return targets_;
 	}
 private:
-	std::vector<std::string> images_;
+	torch::Tensor images_;
 	torch::Tensor targets_;
 	Mode mode_;
 };
@@ -120,8 +125,6 @@ void Run()
 	auto test_loader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
 		std::move(test_dataset), kTestSize);
 
-	int waitTime = 500;
-
 	for (auto& batch : *train_loader)
 	{
 		auto img = batch.data;
@@ -131,10 +134,9 @@ void Run()
 		{
 			auto out = TensorToCV(img[i]);
 			cv::imshow("win", out);
-			std::cout << labels[i].item<int>() << " ";
-			int k = cv::waitKey(waitTime);
+			std::cout << labels[i].item<int>() << std::endl;
+			int k = cv::waitKey(10);
 		}
-		std::cout << std::endl;
 	}
 
 	for (auto& batch : *test_loader)
@@ -146,15 +148,10 @@ void Run()
 		{
 			auto out = TensorToCV(img[i]);
 			cv::imshow("win", out);
-			std::cout << labels[i].item<int>() << " ";
-			int k = cv::waitKey(waitTime);
+			std::cout << labels[i].item<int>() << std::endl;
+			int k = cv::waitKey(10);
 		}
-		std::cout << std::endl;
 	}
 }
 
-int main()
-{
-	Run();
-	return 0;
-}
+*/
