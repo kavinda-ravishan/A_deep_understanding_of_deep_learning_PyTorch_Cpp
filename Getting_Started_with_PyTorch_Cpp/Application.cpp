@@ -6,10 +6,28 @@ constexpr int kTestSize = 20;
 constexpr int kRows = 300;
 constexpr int kCols = 300;
 
-torch::Tensor CVtoTensor(cv::Mat img)
+void randomTransformations(cv::Mat& img)
+{
+	// Random flips in X and Y axises
+	if (torch::randint(2, 1).item<int>() == 1) cv::flip(img, img, 0);
+	if (torch::randint(2, 1).item<int>() == 1) cv::flip(img, img, 1);
+
+	double angle = torch::randint(20, 1).item<double>() - 10;
+	double scale = 0.4 * (torch::randint(1000, 1).item<double>() / 1000) + 1.2;
+
+	std::cout << angle << ", " << scale << std::endl;
+
+	cv::Mat rotM = cv::getRotationMatrix2D(cv::Point2f(kCols / 2, kRows / 2), angle, scale);
+	cv::warpAffine(img, img, rotM, cv::Size(kRows, kCols));
+}
+
+torch::Tensor CVtoTensor(cv::Mat img, bool randTrans)
 {
 	cv::resize(img, img, cv::Size(kRows, kCols), 0, 0, cv::INTER_LINEAR);
 	// cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+
+	if (randTrans) randomTransformations(img);
+
 	auto img_tensor = torch::from_blob(img.data, { kRows, kCols, 3 }, torch::kByte);
 	img_tensor = img_tensor.permute({ 2, 0, 1 }).toType(torch::kFloat).div_(255);
 	return img_tensor;
@@ -52,7 +70,7 @@ struct CatGog : torch::data::datasets::Dataset<CatGog>
 public:
 	enum Mode { kTrain, kTest };
 
-	explicit CatGog(const std::string& root, Mode mode = Mode::kTrain) :mode_(mode)
+	explicit CatGog(const std::string& root, Mode mode, bool randTrans) :mode_(mode), randTrans_(randTrans)
 	{
 		auto data = read_data(root, (mode == Mode::kTrain));
 		images_ = std::move(data.first);
@@ -61,7 +79,7 @@ public:
 	torch::data::Example<> get(size_t index) override
 	{
 		cv::Mat img = cv::imread(images_[index]);
-		auto img_tensor = CVtoTensor(img);
+		auto img_tensor = CVtoTensor(img, randTrans_);
 
 		return { img_tensor, targets_[index] };
 	}
@@ -85,6 +103,7 @@ private:
 	std::vector<std::string> images_;
 	torch::Tensor targets_;
 	Mode mode_;
+	bool randTrans_;
 };
 
 cv::Mat TensorToCV(torch::Tensor x)
@@ -106,21 +125,21 @@ void Run()
 	const std::string root = "./dataset";
 	int batchSize = 4;
 
-	auto train_dataset = CatGog(root)
+	auto train_dataset = CatGog(root, CatGog::Mode::kTest, true)
 		.map(torch::data::transforms::Normalize<>({ 0.5, 0.5, 0.5 }, { 0.5, 0.5, 0.5 }))
 		.map(torch::data::transforms::Stack<>());
 
 	auto train_loader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
 		std::move(train_dataset), batchSize);
 
-	auto test_dataset = CatGog(root, CatGog::Mode::kTest)
+	auto test_dataset = CatGog(root, CatGog::Mode::kTest, false)
 		.map(torch::data::transforms::Normalize<>({ 0.5, 0.5, 0.5 }, { 0.5, 0.5, 0.5 }))
 		.map(torch::data::transforms::Stack<>());
 
 	auto test_loader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
 		std::move(test_dataset), kTestSize);
 
-	int waitTime = 500;
+	int waitTime = 100;
 
 	for (auto& batch : *train_loader)
 	{
