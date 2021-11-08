@@ -10,8 +10,8 @@ void ALL() {
 
 int main(int argc, char** args) {
 	
-	Overfittingand_cross_validation::ALLCalls();
-	
+	ALL();
+
 	return 0;
 }
 

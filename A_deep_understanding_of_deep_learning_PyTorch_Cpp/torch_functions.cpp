@@ -1112,16 +1112,16 @@ void ANNs::ANN_class_classification() {
 		torch::nn::Sigmoid()
 	);*/
 
-	ANNs::ANNclassifyClass ANNclassify;
+	std::shared_ptr<ANNclassifyClass> ANNclassify = std::make_shared<ANNclassifyClass>();
 
 	float learningRate = 0.01;
-	torch::optim::SGD optimizer(ANNclassify.parameters(), learningRate);
+	torch::optim::SGD optimizer(ANNclassify->parameters(), learningRate);
 
 	int numepochs = 1000;
 	torch::Tensor losses = torch::zeros(numepochs, torch::kFloat32);
 
 	for (int i = 0; i < numepochs; i++) {
-		torch::Tensor yhat = ANNclassify.forward(data);
+		torch::Tensor yhat = ANNclassify->forward(data);
 
 		torch::Tensor loss = torch::binary_cross_entropy(yhat, labels);
 		losses[i] = loss;
@@ -1134,7 +1134,7 @@ void ANNs::ANN_class_classification() {
 
 #pragma region make predictions
 
-	torch::Tensor predictions = ANNclassify.forward(data);
+	torch::Tensor predictions = ANNclassify->forward(data);
 
 	plot_losses(losses, numepochs, "plots/ANN_classifier_3_losses.png");
 
@@ -1262,18 +1262,19 @@ void ANNs::ANN_class_ModuleDict_classification() {
 
 #pragma region creating and train the model
 
-	ANNs::ANN_ModuleDict ANNclassify(10, 5);
+	std::shared_ptr<ANN_ModuleDict> ANNclassify = std::make_shared<ANN_ModuleDict>(10, 5);
 
-	std::cout << ANNclassify << std::endl;
+
+	std::cout << *ANNclassify << std::endl;
 
 	float learningRate = 0.01;
-	torch::optim::SGD optimizer(ANNclassify.parameters(), learningRate);
+	torch::optim::SGD optimizer(ANNclassify->parameters(), learningRate);
 
 	int numepochs = 1000;
 	torch::Tensor losses = torch::zeros(numepochs, torch::kFloat32);
 
 	for (int i = 0; i < numepochs; i++) {
-		torch::Tensor yhat = ANNclassify.forward(data);
+		torch::Tensor yhat = ANNclassify->forward(data);
 
 		torch::Tensor loss = torch::binary_cross_entropy(yhat, labels);
 		losses[i] = loss;
@@ -1286,7 +1287,7 @@ void ANNs::ANN_class_ModuleDict_classification() {
 
 #pragma region make predictions
 
-	torch::Tensor predictions = ANNclassify.forward(data);
+	torch::Tensor predictions = ANNclassify->forward(data);
 
 	plot_losses(losses, numepochs, "plots/ANN_classifier_ModuleDict_3_losses.png");
 
@@ -1632,7 +1633,5 @@ void Overfittingand_cross_validation::ALLCalls()
 {
 	Overfittingand_cross_validation::iris_dataset_dataloader_barch_train();
 }
-
-
 
 #pragma endregion
