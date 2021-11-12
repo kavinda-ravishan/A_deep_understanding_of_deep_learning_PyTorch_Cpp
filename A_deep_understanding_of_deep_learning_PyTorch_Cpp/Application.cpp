@@ -64,36 +64,14 @@ namespace Regularization {
 
 	void train_and_eval_modes();
 
+	void Dropout_regularization();
+
 	void AllCalls();
 }
 
-
 int main(int argc, char** args) {
 
-	float prob = 0.5;
-	torch::nn::Dropout dropout(torch::nn::DropoutOptions().p(prob));
-
-	torch::Tensor x = torch::ones({ 1,10 }, { torch::kFloat });
-	torch::Tensor y = dropout(x);
-
-	std::cout << x << std::endl;
-	std::cout << y << std::endl;
-
-	// -- //
-	dropout->eval();
-	y = dropout(x);
-	std::cout << y << std::endl;
-
-	dropout->train();
-	y = dropout(x);
-	std::cout << y << std::endl;
-
-	// -- //
-	y = torch::nn::functional::dropout(x);
-	std::cout << y << std::endl;
-
-	y = torch::nn::functional::dropout(x, torch::nn::functional::DropoutFuncOptions().training(false));
-	std::cout << y << std::endl;
+	Regularization::AllCalls();
 
 	return 0;
 }
@@ -387,9 +365,38 @@ void Regularization::train_and_eval_modes()
 
 }
 
+void Regularization::Dropout_regularization()
+{
+	float prob = 0.5;
+	torch::nn::Dropout dropout(torch::nn::DropoutOptions().p(prob));
+
+	torch::Tensor x = torch::ones({ 1,10 }, { torch::kFloat });
+	torch::Tensor y = dropout(x);
+
+	std::cout << x << std::endl;
+	std::cout << y << std::endl;
+
+	// -- //
+	dropout->eval();
+	y = dropout(x);
+	std::cout << y << std::endl;
+
+	dropout->train();
+	y = dropout(x);
+	std::cout << y << std::endl;
+
+	// -- //
+	y = torch::nn::functional::dropout(x);
+	std::cout << y << std::endl;
+
+	y = torch::nn::functional::dropout(x, torch::nn::functional::DropoutFuncOptions().training(false));
+	std::cout << y << std::endl;
+}
+
 void Regularization::AllCalls()
 {
 	train_and_eval_modes();
+	Dropout_regularization();
 }
 
 #pragma endregion
