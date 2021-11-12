@@ -8,32 +8,99 @@ void ALL() {
 	Overfittingand_cross_validation::ALLCalls();
 }
 
-struct IrisDataSet : torch::data::datasets::Dataset<IrisDataSet>
-{
-public:
-	explicit IrisDataSet(const torch::Tensor& X, const torch::Tensor& y) :X_(X), y_(y) {}
-	torch::data::Example<> get(size_t index) override
+namespace Regularization {
+	struct IrisDataSet : torch::data::datasets::Dataset<IrisDataSet>
 	{
-		return { X_[index], y_[index] };
-	}
-	torch::optional<size_t> size() const override
-	{
-		return X_.size(0);
-	}
-	const torch::Tensor& X() const
-	{
-		return X_;
-	}
-	const torch::Tensor& y() const
-	{
-		return y_;
-	}
-private:
-	torch::Tensor X_;
-	torch::Tensor y_;
-};
+	public:
+		explicit IrisDataSet(const torch::Tensor& X, const torch::Tensor& y) :X_(X), y_(y) {}
+		torch::data::Example<> get(size_t index) override
+		{
+			return { X_[index], y_[index] };
+		}
+		torch::optional<size_t> size() const override
+		{
+			return X_.size(0);
+		}
+		const torch::Tensor& X() const
+		{
+			return X_;
+		}
+		const torch::Tensor& y() const
+		{
+			return y_;
+		}
+	private:
+		torch::Tensor X_;
+		torch::Tensor y_;
+	};
 
-std::pair<int, int> train_test_split(
+	std::pair<int, int> train_test_split(
+		const std::vector<std::vector<float>>& X,
+		const std::vector<int>& y,
+		std::vector<std::vector<float>>& X_train,
+		std::vector<std::vector<float>>& X_test,
+		std::vector<int>& y_train,
+		std::vector<int>& y_test,
+		float train_percentage,
+		int num_data_points
+	);
+
+	std::vector<std::string> split(const std::string& s, char delimiter);
+
+	int read_csv(
+		const std::string& path,
+		std::vector<std::vector<std::string>>& data,
+		std::vector<std::string>& colNames
+	);
+
+	int read_csv(
+		const std::string& root,
+		std::vector<std::vector<float>>& X,
+		std::vector<int>& y,
+		std::vector<std::string>& colNames
+	);
+
+	float eval_model(torch::nn::Sequential& model, const torch::Tensor& X, const torch::Tensor& y);
+
+	void train_and_eval_modes();
+
+	void AllCalls();
+}
+
+
+int main(int argc, char** args) {
+
+	float prob = 0.5;
+	torch::nn::Dropout dropout(torch::nn::DropoutOptions().p(prob));
+
+	torch::Tensor x = torch::ones({ 1,10 }, { torch::kFloat });
+	torch::Tensor y = dropout(x);
+
+	std::cout << x << std::endl;
+	std::cout << y << std::endl;
+
+	// -- //
+	dropout->eval();
+	y = dropout(x);
+	std::cout << y << std::endl;
+
+	dropout->train();
+	y = dropout(x);
+	std::cout << y << std::endl;
+
+	// -- //
+	y = torch::nn::functional::dropout(x);
+	std::cout << y << std::endl;
+
+	y = torch::nn::functional::dropout(x, torch::nn::functional::DropoutFuncOptions().training(false));
+	std::cout << y << std::endl;
+
+	return 0;
+}
+
+#pragma region Regularization
+
+std::pair<int, int> Regularization::train_test_split(
 	const std::vector<std::vector<float>>& X,
 	const std::vector<int>& y,
 	std::vector<std::vector<float>>& X_train,
@@ -90,7 +157,7 @@ std::pair<int, int> train_test_split(
 	return { train_size, test_size };
 }
 
-std::vector<std::string> split(const std::string& s, char delimiter) {
+std::vector<std::string> Regularization::split(const std::string& s, char delimiter) {
 
 	std::vector<std::string> tokens;
 	std::string token;
@@ -102,7 +169,7 @@ std::vector<std::string> split(const std::string& s, char delimiter) {
 	return tokens;
 }
 
-int read_csv(
+int Regularization::read_csv(
 	const std::string& path,
 	std::vector<std::vector<std::string>>& data,
 	std::vector<std::string>& colNames
@@ -156,7 +223,7 @@ int read_csv(
 	return size;
 }
 
-int read_csv(
+int Regularization::read_csv(
 	const std::string& root,
 	std::vector<std::vector<float>>& X,
 	std::vector<int>& y,
@@ -213,18 +280,18 @@ int read_csv(
 	return size;
 }
 
-float eval_model(torch::nn::Sequential& model,const torch::Tensor& X,const torch::Tensor& y)
+float Regularization::eval_model(torch::nn::Sequential& model, const torch::Tensor& X, const torch::Tensor& y)
 {
 	torch::Tensor y_pred;
 
 	model->eval();
-	{	
+	{
 		torch::NoGradGuard no_grad;
 		y_pred = torch::argmax(model->forward(X), 1);
 	}
 
 	int numPreds = y_pred.size(0);
-	int num_correct_preds= 0;
+	int num_correct_preds = 0;
 	for (int i = 0; i < numPreds; i++)
 	{
 		if (y_pred[i].item<int>() == y[i].item<int>()) num_correct_preds++;
@@ -233,8 +300,9 @@ float eval_model(torch::nn::Sequential& model,const torch::Tensor& X,const torch
 	return (num_correct_preds * 100) / float(numPreds);
 }
 
-int main(int argc, char** args) {
-	
+void Regularization::train_and_eval_modes()
+{
+
 #pragma region Data preprocessing
 
 	std::vector<std::vector<float>> X;
@@ -307,7 +375,7 @@ int main(int argc, char** args) {
 			loss.backward();
 			optimizer.step();
 		}
-		
+
 		std::cout << "Epoch : " << setw(3) << std::setprecision(4) << i << " :: ";
 		std::cout << "Training Accuracy : " << setw(6) << eval_model(ANNclassify, X_train_t, y_train_t) << "%" << ", ";
 		std::cout << "Testing Accuracy  : " << setw(6) << eval_model(ANNclassify, X_test_t, y_test_t) << "%" << std::endl;
@@ -317,6 +385,11 @@ int main(int argc, char** args) {
 	std::cout << "Training Accuracy : " << eval_model(ANNclassify, X_train_t, y_train_t) << "%" << ", ";
 	std::cout << "Testing Accuracy  : " << eval_model(ANNclassify, X_test_t, y_test_t) << "%" << std::endl;
 
-	return 0;
 }
 
+void Regularization::AllCalls()
+{
+	train_and_eval_modes();
+}
+
+#pragma endregion
