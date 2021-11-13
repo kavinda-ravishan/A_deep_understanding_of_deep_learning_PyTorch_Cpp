@@ -248,12 +248,13 @@ namespace Regularization {
 
 #pragma endregion
 
-		std::shared_ptr<Net> net = std::make_shared<Net>(0.5);
+		const float dropoutRate = 0.2;
+		std::shared_ptr<Net> net = std::make_shared<Net>(dropoutRate);
 		
 		float learningRate = 0.002f;
 		torch::optim::SGD optimizer(net->parameters(), torch::optim::SGDOptions(learningRate));
 
-		int numEpochs = 100;
+		int numEpochs = 1000;
 
 		for (int i = 0; i < numEpochs; i++)
 		{
@@ -270,10 +271,39 @@ namespace Regularization {
 			}
 			// test model
 			net->eval();
-			std::cout << "Epoch : " << i << std::endl;
+			if (i % 50 == 0)
+			{
+				{
+					std::cout << std::setprecision(4) <<"Epoch : "<< setw(3) << i << " || ";
+					torch::Tensor y_pred = net->forward(data_train);
+
+					int numPreds = y_pred.size(0);
+					int num_correct_preds = 0;
+					for (int i = 0; i < numPreds; i++)
+					{
+						if ((int)(y_pred[i].item<float>() > 0) == labels_train[i].item<int>())
+							num_correct_preds++;
+					}
+
+					std::cout << "Training Accuracy : " << setw(6) << (num_correct_preds * 100) / float(numPreds) << "%" << " | ";
+				}
+				{
+					torch::Tensor y_pred = net->forward(data_test);
+
+					int numPreds = y_pred.size(0);
+					int num_correct_preds = 0;
+					for (int i = 0; i < numPreds; i++)
+					{
+						if ((int)(y_pred[i].item<float>() > 0) == labels_test[i].item<int>())
+							num_correct_preds++;
+					}
+
+					std::cout << "Test Accuracy : " << setw(6) << (num_correct_preds * 100) / float(numPreds) << "%" << std::endl;
+				}
+			}
 		}
 		
-		std::cout << net->forward(data_test) << std::endl;
+		
 	}
 
 	void AllCalls();
