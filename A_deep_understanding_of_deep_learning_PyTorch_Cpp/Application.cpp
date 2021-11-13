@@ -66,12 +66,222 @@ namespace Regularization {
 
 	void Dropout_regularization();
 
+	void plot_data(
+		std::vector<double>& ax,
+		std::vector<double>& ay,
+		std::vector<double>& bx,
+		std::vector<double>& by,
+		const std::string& path
+	) {
+
+		//for (auto a : ax) std::cout << a << std::endl;
+
+		RGBA s1Color{ 0,0,1,1 }; // R,G,B,A
+		RGBA s2Color{ 0,1,0,1 }; // R,G,B,A
+
+		RGBABitmapImageReference* imageReference = CreateRGBABitmapImageReference();
+
+		ScatterPlotSettings* settings = GetDefaultScatterPlotSettings();
+		settings->width = 800;
+		settings->height = 600;
+		settings->autoBoundaries = true;
+		settings->autoPadding = true;
+		settings->title = toVector(L"Data");
+		settings->xLabel = toVector(L"dimension 1");
+		settings->yLabel = toVector(L"dimension 2");
+
+		if (ax.size() != 0 && ay.size() != 0) {
+			ScatterPlotSeries* series1 = GetDefaultScatterPlotSeriesSettings();
+			settings->scatterPlotSeries->push_back(series1);
+			series1->xs = &ax;
+			series1->ys = &ay;
+			series1->linearInterpolation = false;
+			series1->pointType = toVector(L"dots");
+			series1->color = &s1Color;
+		}
+
+		if (bx.size() != 0 && by.size() != 0) {
+			ScatterPlotSeries* series2 = GetDefaultScatterPlotSeriesSettings();
+			settings->scatterPlotSeries->push_back(series2);
+			series2->xs = &bx;
+			series2->ys = &by;
+			series2->linearInterpolation = false;
+			series2->pointType = toVector(L"dots");
+			series2->color = &s2Color;
+		}
+
+		DrawScatterPlotFromSettings(imageReference, settings);
+
+		vector<double>* pngdata = ConvertToPNG(imageReference->image);
+		WriteToFile(pngdata, path);
+		DeleteImage(imageReference->image);
+	}
+
+	std::pair<int, int> train_test_split(
+		const float train_percentage,
+		const torch::Tensor& X,
+		const torch::Tensor& y,
+		torch::Tensor& X_train,
+		torch::Tensor& y_train,
+		torch::Tensor& X_test,
+		torch::Tensor& y_test
+	)
+	{
+		const int num_data_points = X.size(0);
+		const int train_size = int(num_data_points * train_percentage);
+		const int test_size = num_data_points - train_size;
+
+		torch::Tensor randIndex = torch::randperm(num_data_points);
+
+		X_train = torch::zeros({ train_size, X.size(1) }, torch::TensorOptions().dtype(torch::kFloat));
+		X_test = torch::zeros({ test_size, X.size(1) }, torch::TensorOptions().dtype(torch::kFloat));
+		y_train = torch::zeros({ train_size, y.size(1) }, torch::TensorOptions().dtype(torch::kFloat));
+		y_test = torch::zeros({ test_size, y.size(1) }, torch::TensorOptions().dtype(torch::kFloat));
+
+		for (int i = 0; i < train_size; i++)
+		{
+			X_train[i] = X[randIndex[i].item<int>()];
+			y_train[i] = y[randIndex[i].item<int>()];
+		}
+
+		for (int i = train_size; i < num_data_points; i++)
+		{
+			X_test[i - train_size] = X[randIndex[i].item<int>()];
+			y_test[i - train_size] = y[randIndex[i].item<int>()];
+		}
+
+		return { train_size, test_size };
+	}
+
+	struct DataLoader : torch::data::datasets::Dataset<DataLoader>
+	{
+	public:
+		explicit DataLoader(const torch::Tensor& X, const torch::Tensor& y) :X_(X), y_(y) {}
+		torch::data::Example<> get(size_t index) override
+		{
+			return { X_[index], y_[index] };
+		}
+		torch::optional<size_t> size() const override
+		{
+			return X_.size(0);
+		}
+		const torch::Tensor& X() const
+		{
+			return X_;
+		}
+		const torch::Tensor& y() const
+		{
+			return y_;
+		}
+	private:
+		torch::Tensor X_;
+		torch::Tensor y_;
+	};
+	
+	class Net : public torch::nn::Module {
+	private:
+		torch::nn::Linear input{ nullptr }, hidden{ nullptr }, output{ nullptr };
+		double dr;
+	public:
+		Net(float dropoutRate):dr(dropoutRate)
+		{
+			input = register_module("input", torch::nn::Linear(2, 128));
+			hidden = register_module("hidden", torch::nn::Linear(128, 128));
+			output = register_module("output", torch::nn::Linear(128, 1));
+		}
+		torch::Tensor forward(torch::Tensor x)
+		{
+			x = torch::relu(input->forward(x));
+			x = torch::dropout(x, dr, this->is_training());
+
+			x = torch::relu(hidden->forward(x));
+			x = torch::dropout(x, dr, this->is_training());
+
+			x = output->forward(x);
+
+			return x;
+		}
+	};
+
+	void Regular_dropout()
+	{
+#pragma region Create data
+		const int nPerClust = 200;
+		const int num_data_points = 2 * nPerClust;
+		
+		const int r1 = 10;
+		const int r2 = 15;
+
+		torch::Tensor th = torch::linspace(0, 4 * M_PI, nPerClust);
+
+		torch::Tensor ax_t = r1 * torch::cos(th) + torch::randn({ nPerClust }) * 3;
+		torch::Tensor ay_t = r1 * torch::sin(th) + torch::randn({ nPerClust });
+		torch::Tensor bx_t = r2 * torch::cos(th) + torch::randn({ nPerClust }) * 3;
+		torch::Tensor by_t = r2 * torch::sin(th) + torch::randn({ nPerClust });
+
+		std::vector<double> ax(ax_t.data_ptr<float>(), ax_t.data_ptr<float>() + ax_t.numel());
+		std::vector<double> ay(ay_t.data_ptr<float>(), ay_t.data_ptr<float>() + ay_t.numel());
+		std::vector<double> bx(bx_t.data_ptr<float>(), bx_t.data_ptr<float>() + bx_t.numel());
+		std::vector<double> by(by_t.data_ptr<float>(), by_t.data_ptr<float>() + by_t.numel());
+
+		plot_data(ax, ay, bx, by, "plots/Regularization_Regular_dropout_data.png");
+
+		torch::Tensor labels = torch::vstack({ torch::zeros({nPerClust, 1}), torch::ones({nPerClust, 1}) });
+
+		torch::Tensor dataA = torch::transpose(torch::stack({ ax_t, ay_t }), 1, 0);
+		torch::Tensor dataB = torch::transpose(torch::stack({ bx_t, by_t }), 1, 0);
+
+		torch::Tensor data = torch::vstack({ dataA, dataB });
+
+		torch::Tensor data_train;
+		torch::Tensor data_test;
+		torch::Tensor labels_train;
+		torch::Tensor labels_test;
+
+		std::pair<int, int> train_test_sizes = train_test_split(0.8f ,data, labels, data_train, labels_train, data_test, labels_test);
+
+		auto train_dataset = DataLoader(data_train, labels_train).map(torch::data::transforms::Stack<>());
+
+		int batchSize = 16;
+		auto train_loader = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(
+			std::move(train_dataset), batchSize);
+
+#pragma endregion
+
+		std::shared_ptr<Net> net = std::make_shared<Net>(0.5);
+		
+		float learningRate = 0.002f;
+		torch::optim::SGD optimizer(net->parameters(), torch::optim::SGDOptions(learningRate));
+
+		int numEpochs = 100;
+
+		for (int i = 0; i < numEpochs; i++)
+		{
+			net->train();
+			for (auto& batch : *train_loader)
+			{
+				torch::Tensor yhat = net->forward(batch.data);
+				
+				torch::Tensor loss = torch::binary_cross_entropy_with_logits(yhat, batch.target);
+
+				optimizer.zero_grad();
+				loss.backward();
+				optimizer.step();
+			}
+			// test model
+			net->eval();
+			std::cout << "Epoch : " << i << std::endl;
+		}
+		
+		std::cout << net->forward(data_test) << std::endl;
+	}
+
 	void AllCalls();
 }
 
 int main(int argc, char** args) {
 
-	Regularization::AllCalls();
+	Regularization::Regular_dropout();
 
 	return 0;
 }
