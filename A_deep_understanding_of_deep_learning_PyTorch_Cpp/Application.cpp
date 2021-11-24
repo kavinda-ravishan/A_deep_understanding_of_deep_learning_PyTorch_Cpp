@@ -138,12 +138,14 @@ namespace Regularization {
 
 	void L2_regularization();
 
+	void L1_L2_regularization();
+
 	void AllCalls();
 }
 
 int main(int argc, char** args) {
 
-	Regularization::L2_regularization();
+	Regularization::L1_L2_regularization();
 
 	return 0;
 }
@@ -704,7 +706,6 @@ void Regularization::L2_regularization()
 		torch::Tensor yhat = ANNclassify->forward(data);
 
 		torch::Tensor loss = torch::binary_cross_entropy_with_logits(yhat, labels);
-		losses[i] = loss;
 
 		optimizer.zero_grad();
 		loss.backward();
@@ -742,12 +743,91 @@ void Regularization::L2_regularization()
 #pragma endregion
 }
 
+void Regularization::L1_L2_regularization()
+{
+#pragma region Create data
+
+	int N = 40;
+
+	torch::Tensor x = torch::randn({ N,1 }, torch::kFloat32);
+	torch::Tensor y = x + torch::randn({ N,1 }, torch::kFloat32) / 2;
+
+#pragma endregion
+
+#pragma region creating and train the model
+
+	torch::nn::Sequential ANNReg(
+		torch::nn::Linear(1, 1),
+		torch::nn::ReLU(),
+		torch::nn::Linear(1, 1)
+	);
+
+	// -- Get number of weights -- //
+	int nweights = 0;
+	torch::OrderedDict<std::string, torch::Tensor> layers = ANNReg->named_parameters();
+
+	for (auto layer : layers)
+	{
+		if ((int)layer.key().find("bias") == -1)
+		{
+			nweights = nweights + layer.value().numel();
+		}
+	}
+	// --------------------------- //
+
+	float learningRate = 0.05;
+	torch::optim::SGD optimizer(ANNReg->parameters(), learningRate);
+
+	int numepochs = 1000;
+	torch::Tensor losses = torch::zeros(numepochs, torch::kFloat32);
+
+	// -- for L1 and L2 regularizations -- //
+	float L2lambda = 0.01f;
+	float L1lambda = 0.001f;
+
+	float L1_term = .0f;
+	float L2_term = .0f;
+	// ----------------------------------- //
+
+	for (int i = 0; i < numepochs; i++) {
+		torch::Tensor yhat = ANNReg->forward(x);
+
+		torch::Tensor loss = torch::mse_loss(yhat, y);
+		losses[i] = loss;
+
+		// -- Apply L1 and L2 regularizations -- //
+		for (auto layer : layers)
+		{
+			if ((int)layer.key().find("bias") == -1)
+			{
+				L1_term = L1_term + torch::sum(torch::abs(layer.value())).item<float>();
+				L2_term = L2_term + torch::sum(torch::square(layer.value())).item<float>();
+			}
+		}
+
+		loss = loss + ((L1lambda * L1_term) + (L2lambda * L2_term)) / nweights;
+		// ------------------------------------- //
+
+		optimizer.zero_grad();
+		loss.backward();
+		optimizer.step();
+	}
+#pragma endregion
+
+#pragma region Losses
+
+	std::cout << losses << std::endl;
+
+#pragma endregion
+}
+
 void Regularization::AllCalls()
 {
 	train_and_eval_modes();
 	Dropout_regularization();
 	Regular_dropout();
 	L2_regularization();
+	L1_L2_regularization();
 }
 
 #pragma endregion
